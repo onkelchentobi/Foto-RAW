@@ -1,0 +1,776 @@
+<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RAW entwickeln</title>
+<style>
+:root{--bg:#161616;--bg2:#222;--fg:#e8e8e8;--mu:#999}
+*{box-sizing:border-box}body{margin:0;height:100vh;height:100dvh;display:flex;flex-direction:column;background:var(--bg);color:var(--fg);font:14px system-ui,sans-serif}
+header{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 12px;background:var(--bg2)}
+select{background:#333;color:var(--fg);border:1px solid #444;border-radius:6px;padding:6px 8px;font:inherit}
+button,.btn{background:#333;color:var(--fg);border:1px solid #444;border-radius:6px;padding:6px 12px;cursor:pointer;font:inherit}
+button:hover,.btn:hover{background:#3d3d3d}
+main{flex:1;display:flex;min-height:0}
+#st{flex:1 1 0;min-height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;min-width:0;padding:12px;position:relative}
+canvas{max-width:100%;max-height:100%;box-shadow:0 0 0 1px #333;display:none}
+#msg{position:absolute;color:var(--mu);text-align:center;padding:20px;background:#000a;border-radius:8px}
+aside{width:300px;overflow:auto;padding:12px;background:var(--bg2)}
+label.r{display:block;margin-bottom:12px}label.r span{display:flex;justify-content:space-between}
+input[type=range]{width:100%}input[type=file]{display:none}
+.dd{position:relative}
+.menu{position:absolute;top:100%;left:0;margin-top:4px;z-index:20;min-width:270px;background:var(--bg2);border:1px solid #444;border-radius:8px;padding:6px;box-shadow:0 6px 20px #000a}
+.menu[hidden]{display:none}
+.menu button{display:flex;width:100%;justify-content:space-between;align-items:baseline;gap:14px;text-align:left;background:none;border:0;padding:7px 10px}
+.menu button:hover{background:#3d3d3d}.menu small{color:var(--mu);font-size:11px}
+.mh{color:var(--mu);font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:8px 10px 2px}
+#info{color:var(--mu);font-size:12px;margin-bottom:12px;white-space:pre-line}
+#hg{display:none;max-height:none;width:100%;height:90px;margin-bottom:10px;background:#111;border-radius:4px}
+.wbh{display:flex;justify-content:space-between;align-items:center;margin:4px 0 10px;color:var(--mu);font-size:11px;text-transform:uppercase;letter-spacing:.06em}.wbh button{padding:3px 12px;font-size:12px}.wbh button.on{background:#3b5f99;border-color:#6a8ec8}
+#cu{display:block;width:100%;max-height:none;aspect-ratio:1;background:#111;border-radius:4px;touch-action:none;cursor:crosshair;margin-bottom:6px}#ch{color:var(--mu);font-size:11px;margin-bottom:12px}
+.ctabs{display:flex;gap:6px;margin-bottom:8px}.ctabs button{flex:1;padding:4px 0}.ctabs button.on{background:#3b5f99;border-color:#6a8ec8}.ctabs button.mod::after{content:" •"}
+#cd,#zd,#md,#cpd{margin-top:8px}#cp_l{max-height:34vh;overflow:auto;-webkit-overflow-scrolling:touch}.cpi{padding:10px 8px;border-bottom:1px solid #2f2f2f;font-size:13px;cursor:pointer}.cpi:active{background:#2a2a2a}#cd summary,#zd summary,#md summary,#cpd summary{cursor:pointer;padding:13px 12px;margin:0 0 8px;list-style:none;justify-content:flex-start;gap:10px;background:#2a2a2a;border-radius:6px;font-size:13px;-webkit-tap-highlight-color:transparent;user-select:none}#cd summary::-webkit-details-marker,#zd summary::-webkit-details-marker,#md summary::-webkit-details-marker,#cpd summary::-webkit-details-marker{display:none}#cd summary::before,#zd summary::before,#md summary::before,#cpd summary::before{content:"▸";display:inline-block;width:1em;text-align:center}#cd[open] summary::before,#zd[open] summary::before,#md[open] summary::before,#cpd[open] summary::before{content:"▾"}
+#mdf{width:100%;box-sizing:border-box;margin-bottom:6px;padding:6px}#mdb{max-height:55vh;overflow:auto;font-size:12px;line-height:1.35;-webkit-overflow-scrolling:touch}#mdb table{width:100%;border-collapse:collapse;margin-bottom:8px}#mdb td{padding:2px 4px;vertical-align:top;border-bottom:1px solid #2c2c2c;word-break:break-word}#mdb td.mk{color:var(--mu);width:42%}#mdb .ms{margin:8px 0 4px;color:#9bb7e6;font-weight:600}.crow{display:flex;gap:8px;align-items:center;margin-bottom:8px}.crow .ctabs{flex:1;margin:0}.crow #cr{padding:4px 10px;font-size:12px}
+#sum{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px;margin:0 0 12px}#sum b{color:var(--mu);font-weight:400}
+@media(max-width:700px){main{flex-direction:column}aside{width:100%;flex:none;max-height:48%}#cu{width:min(100%,32vh);margin:0 auto 6px}#ch{text-align:center}}
+</style></head><body>
+<header><label class="btn">Öffnen …<input type="file" id="fi" accept=".dng,.nef,.tif,.tiff,.jpg,.jpeg,image/jpeg"></label>
+<button id="rs">Zurücksetzen</button><div class="dd"><button id="ex">Exportieren ▾</button><div id="exm" class="menu" hidden>
+<div class="mh">8 Bit</div>
+<button data-t="jpg">JPEG<small>Qualität 100 %</small></button>
+<button data-t="png">PNG<small>verlustfrei</small></button>
+<button data-t="tif8">TIFF<small>unkomprimiert, mit Vorschau</small></button>
+<button data-t="dng8">DNG<small>Linear-DNG, mit Vorschau</small></button>
+<div class="mh">16 Bit</div>
+<button data-t="png16">PNG<small>verlustfrei, komprimiert</small></button>
+<button data-t="tif">TIFF<small>unkomprimiert, mit Vorschau</small></button>
+<button data-t="dng">DNG<small>Linear-DNG, mit Vorschau</small></button>
+</div></div>
+<button id="es">Einstellungen speichern</button><label class="btn">Einstellungen laden<input type="file" id="fl" accept=".txt"></label>
+<select id="lang" aria-label="Sprache / Language" style="margin-left:auto"><option value="de">Deutsch</option><option value="en">English</option></select></header>
+<main><div id="st"><canvas id="cv"></canvas><div id="msg">DNG-, NEF-, TIFF- oder JPEG-Datei hierher ziehen oder über „Öffnen“ wählen</div></div>
+<aside><canvas id="hg" width="256" height="90"></canvas><div id="sum"></div><div id="info"></div></aside></main>
+<script>
+const $=s=>document.querySelector(s),tick=()=>new Promise(r=>setTimeout(r));
+// ---------- Sprache / Language ----------
+let LANG='de';try{LANG=localStorage.getItem('lang')||''}catch(e){}
+if(LANG!='de'&&LANG!='en')LANG=((navigator.language||'').toLowerCase().indexOf('de')==0)?'de':'en';
+const EN={
+'RAW entwickeln':'Develop RAW','Öffnen …':'Open …','Zurücksetzen':'Reset','Exportieren ▾':'Export ▾','Qualität 100 %':'Quality 100 %','verlustfrei':'lossless',
+'unkomprimiert, mit Vorschau':'uncompressed, with preview','Linear-DNG, mit Vorschau':'Linear DNG, with preview','verlustfrei, komprimiert':'lossless, compressed',
+'Einstellungen speichern':'Save settings','Einstellungen laden':'Load settings',
+'DNG-, NEF-, TIFF- oder JPEG-Datei hierher ziehen oder über „Öffnen“ wählen':'Drop a DNG, NEF, TIFF or JPEG file here or choose “Open”',
+'Belichtung (EV)':'Exposure (EV)','Temperatur':'Temperature','Tönung':'Tint','Kontrast':'Contrast','Lichter':'Highlights','Schatten':'Shadows','Sättigung':'Saturation',
+'Weißabgleich':'White balance','Pipette':'Eyedropper','Auf eine neutrale graue Stelle klicken':'Click on a neutral gray spot',
+'Diese Stelle ist zu dunkel für den Weißabgleich.':'This spot is too dark for white balance.','Diese Stelle ist überbelichtet – bitte eine andere wählen.':'This spot is overexposed – please pick another one.',
+'Gradationskurve':'Tone curve','Diese zurücksetzen':'Reset this one',
+'Tippen: Punkt setzen · Ziehen: verschieben · Doppeltippen: Punkt löschen · Endpunkte gleiten am Rand entlang':'Tap: add point · Drag: move · Double-tap: delete point · End points slide along the edge',
+'Drehen':'Rotate','Winkel (frei)':'Angle (free)','Zuschnitt (Randpixel)':'Crop (edge pixels)','Links (px)':'Left (px)','Rechts (px)':'Right (px)','Oben (px)':'Top (px)','Unten (px)':'Bottom (px)',
+'Informationen (Metadaten)':'Information (metadata)','Suchen …':'Search …','Keine Datei geladen.':'No file loaded.',
+'Lade ':'Loading ','Fehler: ':'Error: ','Fehler beim Export: ':'Export error: ','Entwickle in voller Größe …':'Developing at full size …','Schreibe Datei …':'Writing file …',
+'Bitte zuerst eine Datei öffnen.':'Please open a file first.',' ist für JPEG zu groß und wurde nicht übernommen.':' is too large for JPEG and was not included.',
+'Auswertung durch das Tool':'Tool analysis','Datei':'File','Kamera':'Camera','Rohbild':'Raw image','Aktiver Ausschnitt':'Active area',' px ab Spalte ':' px from column ','Zeile':'row',' · Bayer-Muster ':' · Bayer pattern ',
+'Schwarzpegel':'Black level','Weißpegel (Rohwert)':'White level (raw value)','Sättigung Grünkanal (erkannt)':'Green channel saturation (detected)','Weißabgleich-Faktoren R / G / B':'White balance factors R / G / B',' (geschätzt)':' (estimated)',
+'Farbprofil':'Color profile','Rand abgeschnitten L / R / O / U':'Edge cropped L / R / T / B',' Karte(n) angewendet':' map(s) applied','Objektivabschattung (GainMap)':'Lens shading (GainMap)',
+'Kamera unbekannt':'Camera unknown','Rohdaten (Bayer)':'Raw data (Bayer)','Allgemeines Standardprofil':'Generic default profile','Rand abgeschnitten (L/R/O/U)':'Edge cropped (L/R/T/B)',
+'Zuschnitt aus dieser Sitzung übernommen':'Crop taken over from this session','Weißabgleich: geschätzt (Pipette nutzen)':'White balance: estimated (use the eyedropper)','Schwarzwert: geschätzt':'Black level: estimated',
+'Objektivabschattung (GainMap) korrigiert':'Lens shading (GainMap) corrected',
+'Aufnahme':'Captured','Zeit / Blende':'Shutter / Aperture','Brennweite':'Focal length','Blitz':'Flash','Messung':'Metering','Fokusfeld':'Focus point','KB':'35 mm eq.',
+'an (ausgelöst)':'on (fired)','aus':'off','unbekannt':'unknown','Durchschnitt':'Average','Mittenbetont':'Center-weighted','Mehrfeld-Spot':'Multi-spot','Teilmessung':'Partial','andere':'other','Nr. ':'No. ',
+'Feld ':'Point ','Modus ':'Mode ','Einzelfeld':'Single point','Dynamisch':'Dynamic','Dynamisch (nächstes Objekt)':'Dynamic (closest subject)','Gruppe dynamisch':'Group dynamic','Einzelfeld (weit)':'Single point (wide)','Dynamisch (weit)':'Dynamic (wide)',
+'Mitte':'Center','oben':'top','unten':'bottom','Mitte-links':'center-left','Mitte-rechts':'center-right','oben-links':'top-left','oben-rechts':'top-right','unten-links':'bottom-left','unten-rechts':'bottom-right','ganz links':'far left','ganz rechts':'far right',
+'AFInfo2 vorhanden, Messfeld noch nicht ausgewertet':'AFInfo2 present, focus point not evaluated yet',
+'Haupt-IFD (IFD0)':'Main IFD (IFD0)','Interoperabilität':'Interoperability','Hinweis':'Note','(außerhalb der Datei)':'(outside the file)',
+'unkomprimiert':'uncompressed','JPEG (alt)':'JPEG (old)','Nikon NEF komprimiert':'Nikon NEF compressed','Verlustbehaftetes JPEG (DNG)':'Lossy JPEG (DNG)','CFA (Rohdaten)':'CFA (raw data)','90° im Uhrzeigersinn':'90° clockwise','90° gegen den Uhrzeigersinn':'90° counterclockwise',
+'Verlustbehaftetes JPEG in DNG wird nicht unterstützt.':'Lossy JPEG in DNG is not supported.','Nikon-Linearisierungstabelle nicht gefunden.':'Nikon linearization table not found.',
+'Dieses NEF-Format (z. B. „High Efficiency“) wird nicht unterstützt.':'This NEF format (e.g. “High Efficiency”) is not supported.','JPEG konnte nicht dekodiert werden.':'The JPEG could not be decoded.',
+'Canon CR3 (CRX-Kompression) wird nicht unterstützt. Bitte vorher in DNG umwandeln, z. B. mit dem kostenlosen Adobe DNG Converter.':'Canon CR3 (CRX compression) is not supported. Please convert it to DNG first, e.g. with the free Adobe DNG Converter.',
+'Keine TIFF/DNG-Datei (BigTIFF und andere RAW-Formate werden nicht unterstützt).':'Not a TIFF/DNG file (BigTIFF and other RAW formats are not supported).',
+'Canon CR2 wird nicht mehr unterstützt. Bitte DNG, NEF oder TIFF verwenden.':'Canon CR2 is no longer supported. Please use DNG, NEF or TIFF.',
+'Sony ARW wird nicht mehr unterstützt. Bitte DNG, NEF oder TIFF verwenden.':'Sony ARW is no longer supported. Please use DNG, NEF or TIFF.',
+'Kein unterstütztes Bild gefunden (LZW/PackBits-TIFF, verlustbehaftetes DNG und NEF „High Efficiency“ werden nicht unterstützt).':'No supported image found (LZW/PackBits TIFF, lossy DNG and NEF “High Efficiency” are not supported).',
+'Nur 8 und 16 Bit (unkomprimiert/Deflate) bzw. Lossless-JPEG werden unterstützt.':'Only 8 and 16 bit (uncompressed/Deflate) or lossless JPEG are supported.',
+'Nikon-MakerNote nicht lesbar (nur NEF mit Nikon-Typ-3-MakerNote werden unterstützt).':'Nikon MakerNote not readable (only NEF files with a Nikon type 3 MakerNote are supported).',
+'Nur 2×2-Farbfilter (Bayer) werden unterstützt.':'Only 2×2 color filters (Bayer) are supported.','Dieses Farbfilter-Muster wird nicht unterstützt.':'This color filter pattern is not supported.',
+'Big-Endian-System wird nicht unterstützt.':'Big-endian systems are not supported.'};
+const PAT=[[/^Bild-IFD (.*)$/,m=>'Image IFD '+m[1]],[/^(.*) … \((\d+) Bytes\)$/,m=>m[1]+' … ('+m[2]+' bytes)'],[/^(.*) … \((\d+) Werte\)$/,m=>m[1]+' … ('+m[2]+' values)'],
+ [/^vorhanden \((\d+) Bytes\), Format nicht lesbar$/,m=>'present ('+m[1]+' bytes), format not readable'],[/^(\d+) – (.+)$/,m=>m[1]+' – '+T(m[2])]];
+function T(s){if(LANG!='en'||typeof s!='string')return s;const v=EN[s];if(v!==undefined)return v;for(const[r,f]of PAT){const m=r.exec(s);if(m)return f(m)}return s}
+
+const S=[['ev','Belichtung (EV)',-4,4,.05,0],['temp','Temperatur',-200,200,1,0],['tint','Tönung',-200,200,1,0],['con','Kontrast',-100,100,1,0],['hl','Lichter',-100,100,1,0],['sh','Schatten',-100,100,1,0],['sat','Sättigung',-100,100,1,0]];
+const P={};let R=null,pv=null,pw=0,ph=0,pv0=null,pw0=0,ph0=0,pimg=null,name='foto',raf=0;
+const ctx=$('#cv').getContext('2d');
+// ---------- Histogramm (entwickelte Vorschau) ----------
+const HC=$('#hg'),hx=HC.getContext('2d'),hb=new Uint32Array(768);
+function hist(){const d=pimg.data,n=pw*ph,W=256,H=HC.height;hb.fill(0);
+ for(let i=0,j=0;i<n;i++,j+=4){hb[d[j]]++;hb[256+d[j+1]]++;hb[512+d[j+2]]++}
+ let mx=1;for(let c=0;c<3;c++)for(let i=1;i<255;i++)mx=Math.max(mx,hb[c*256+i]);
+ hx.globalCompositeOperation='source-over';hx.fillStyle='#111';hx.fillRect(0,0,W,H);hx.globalCompositeOperation='lighter';
+ ['rgb(220,0,0)','rgb(0,220,0)','rgb(0,0,220)'].forEach((col,c)=>{hx.fillStyle=col;for(let i=0;i<W;i++){const h=Math.min(1,Math.sqrt(hb[c*256+i]/mx))*H;hx.fillRect(i,H-h,1,h)}});
+ HC.style.display='block'}
+let lastMsg='';const msg=t=>{lastMsg=t;$('#msg').textContent=T(t);$('#msg').style.display=t?'':'none'};
+$('aside').insertAdjacentHTML('beforeend',S.map(([k,n,a,b,s,d])=>`<label class="r"><span>${n}<b id="o_${k}">${d}</b></span><input type="range" id="s_${k}" min="${a}" max="${b}" step="${s}" value="${d}"></label>`).join(''));
+function readP(){for(const[k]of S){P[k]=+$('#s_'+k).value;$('#o_'+k).textContent=P[k]}}
+for(const[k,,,,,d]of S){const e=$('#s_'+k);e.oninput=()=>{readP();cancelAnimationFrame(raf);raf=requestAnimationFrame(draw)};e.ondblclick=()=>{e.value=d;e.oninput()}}
+readP();
+// ---------- Weißabgleich: Pipette ----------
+$('#s_temp').closest('label').insertAdjacentHTML('beforebegin','<div class="wbh"><span>Weißabgleich</span><button id="pip" title="Auf eine neutrale graue Stelle klicken">Pipette</button></div>');
+let pick=false;
+function setPick(on){on=!!(on&&R&&pv);pick=on;$('#pip').classList.toggle('on',on);$('#cv').style.cursor=on?'crosshair':''}
+$('#pip').onclick=()=>setPick(!pick);
+$('#cv').addEventListener('click',e=>{
+ if(!pick)return;
+ const r=e.currentTarget.getBoundingClientRect(),cx=Math.floor((e.clientX-r.left)/r.width*pw),cy=Math.floor((e.clientY-r.top)/r.height*ph),s=[0,0,0];let n=0;
+ for(let y=Math.max(0,cy-2);y<=Math.min(ph-1,cy+2);y++)for(let x=Math.max(0,cx-2);x<=Math.min(pw-1,cx+2);x++){const i=(y*pw+x)*3;for(let c=0;c<3;c++)s[c]+=pv[i+c];n++}
+ setPick(false);if(!n)return;
+ const bad=t=>{msg(t);setTimeout(()=>msg(''),2500)},m=s.map(t=>t/n);
+ if(Math.min(...m)<.002)return bad('Diese Stelle ist zu dunkel für den Weißabgleich.');
+ if(Math.max(...m)>.97*(R.sat||1))return bad('Diese Stelle ist überbelichtet – bitte eine andere wählen.');
+ const[a,b,c]=m.map((t,k)=>t*R.wb[k]),set=(k,x)=>{$('#s_'+k).value=Math.round(x)};
+ set('temp',100*Math.log2(c/a));set('tint',200*Math.log2(b/Math.sqrt(a*c)));
+ readP();draw()});
+// ---------- Gradationskurve ----------
+$('aside').insertAdjacentHTML('beforeend','<details id="cd"><summary class="wbh">Gradationskurve</summary><div class="crow"><div class="ctabs" id="ctab"><button class="on" data-i="0">RGB</button><button data-i="1" style="color:#f77">R</button><button data-i="2" style="color:#7d7">G</button><button data-i="3" style="color:#7af">B</button></div><button id="cr">Diese zurücksetzen</button></div><canvas id="cu" width="256" height="256"></canvas><div id="ch">Tippen: Punkt setzen · Ziehen: verschieben · Doppeltippen: Punkt löschen · Endpunkte gleiten am Rand entlang</div></details>');
+let CP=[0,1,2,3].map(()=>[[0,0],[1,1]]),cc=0,pts=CP[0],CU=[null,null,null,null],drag=-1;
+function ap(T,v){v=v<0?0:v>1?1:v;const y=v*4096,i=y>=4096?4095:y|0;return T[i]+(T[i+1]-T[i])*(y-i)}
+function buildCurve(pts){
+ const n=pts.length;if(pts.every(p=>Math.abs(p[0]-p[1])<1e-4))return null;
+ const x=pts.map(p=>p[0]),y=pts.map(p=>p[1]),d=[],m=[];
+ for(let i=0;i<n-1;i++)d[i]=(y[i+1]-y[i])/(x[i+1]-x[i]);
+ m[0]=d[0];m[n-1]=d[n-2];
+ for(let i=1;i<n-1;i++)m[i]=d[i-1]*d[i]>0?2*d[i-1]*d[i]/(d[i-1]+d[i]):0;
+ const T=new Float32Array(4097);let k=0;
+ for(let i=0;i<=4096;i++){const u=i/4096;if(u<=x[0]){T[i]=y[0];continue}if(u>=x[n-1]){T[i]=y[n-1];continue}while(k<n-2&&u>x[k+1])k++;
+  const h=x[k+1]-x[k],t=(u-x[k])/h,t2=t*t,t3=t2*t;
+  const v=(2*t3-3*t2+1)*y[k]+(t3-2*t2+t)*h*m[k]+(-2*t3+3*t2)*y[k+1]+(t3-t2)*h*m[k+1];
+  T[i]=v<0?0:v>1?1:v}
+ return T}
+const CVs=$('#cu');
+const CPAD=.06,CK=1-2*CPAD;
+function drawCurve(){const g=CVs.getContext('2d'),W=CVs.width,H=CVs.height,X=u=>(CPAD+u*CK)*W,Y=v=>(CPAD+(1-v)*CK)*H;
+ g.fillStyle='#111';g.fillRect(0,0,W,H);g.strokeStyle='#2c2c2c';g.lineWidth=1;g.beginPath();
+ for(let i=0;i<=4;i++){g.moveTo(X(i/4),Y(0));g.lineTo(X(i/4),Y(1));g.moveTo(X(0),Y(i/4));g.lineTo(X(1),Y(i/4))}g.stroke();
+ g.strokeStyle='#444';g.beginPath();g.moveTo(X(0),Y(0));g.lineTo(X(1),Y(1));g.stroke();
+ g.strokeStyle=['#e8e8e8','#f55','#5d5','#59f'][cc];g.lineWidth=1.5;g.beginPath();
+ for(let i=0;i<=256;i++){const u=i/256,v=CU[cc]?CU[cc][i*16]:u;i?g.lineTo(X(u),Y(v)):g.moveTo(X(u),Y(v))}g.stroke();
+ g.fillStyle='#fff';g.strokeStyle='#000';for(const p of pts){g.beginPath();g.arc(X(p[0]),Y(p[1]),5,0,7);g.fill();g.stroke()}}
+function tabsUI(){document.querySelectorAll('#ctab button').forEach((b,i)=>{b.classList.toggle('on',i==cc);b.classList.toggle('mod',!!CU[i])})}
+function curveChanged(){CU=CP.map(p=>buildCurve(p));tabsUI();drawCurve();cancelAnimationFrame(raf);raf=requestAnimationFrame(draw)}
+const cpos=e=>{const r=CVs.getBoundingClientRect();return[((e.clientX-r.left)/r.width-CPAD)/CK,1-((e.clientY-r.top)/r.height-CPAD)/CK,r]};
+const cnear=(px,py,r,rad=14)=>{let b=-1,bd=rad;pts.forEach((p,i)=>{const d=Math.hypot((px-p[0])*r.width*CK,(py-p[1])*r.height*CK);if(d<bd){bd=d;b=i}});return b};
+let lt=0,li=-1;
+CVs.onpointerdown=e=>{
+ const[px,py,r]=cpos(e),now=Date.now();let b=cnear(px,py,r,e.pointerType=='mouse'?14:28);
+ if(b>0&&b<pts.length-1&&b==li&&now-lt<350){pts.splice(b,1);lt=0;li=-1;drag=-1;curveChanged();return}
+ if(b<0){if(pts.length>=20)return;const x=Math.min(.99,Math.max(.01,px)),y=Math.min(1,Math.max(0,py));
+  let i=pts.findIndex(p=>p[0]>x);if(i<1)return;
+  if(x-pts[i-1][0]<.01||pts[i][0]-x<.01)return;
+  pts.splice(i,0,[x,y]);b=i;curveChanged()}
+ lt=now;li=b;drag=b;CVs.setPointerCapture(e.pointerId)};
+CVs.onpointermove=e=>{if(drag<0)return;
+ const[px,py]=cpos(e),last=pts.length-1,cl=(v,a,b)=>Math.min(b,Math.max(a,v));let p;
+ if(drag==0){const x=cl(px,0,pts[1][0]-.01),y=cl(py,0,1);p=x>y?[x,0]:[0,y]}
+ else if(drag==last){const x=cl(px,pts[last-1][0]+.01,1),y=cl(py,0,1);p=(1-x)>(1-y)?[x,1]:[1,y]}
+ else p=[cl(px,pts[drag-1][0]+.01,pts[drag+1][0]-.01),cl(py,0,1)];
+ pts[drag]=p;curveChanged()};
+CVs.onpointerup=CVs.onpointercancel=()=>{drag=-1};
+$('#cr').onclick=()=>{CP[cc]=[[0,0],[1,1]];pts=CP[cc];curveChanged()};
+$('#ctab').onclick=e=>{const b=e.target.closest('button');if(!b)return;cc=+b.dataset.i;pts=CP[cc];drag=-1;tabsUI();drawCurve()};
+const cstr=p=>p.map(v=>v.map(q=>+q.toFixed(4)).join(',')).join(';');
+function setCurve(t,i=0){const a=t.split(';').map(q=>q.split(',').map(Number));
+ if(a.length<2||a.length>20||!a.every((p,i)=>p.length==2&&p.every(Number.isFinite)&&p[1]>=0&&p[1]<=1&&(!i||p[0]>a[i-1][0])))return;
+ const z=a[a.length-1];if(!(a[0][0]==0||a[0][1]==0)||!(z[0]==1||z[1]==1))return;CP[i]=a;pts=CP[cc];curveChanged()}
+tabsUI();drawCurve();
+// ---------- Drehen (90°-Schritte + freier Winkel) ----------
+const ROT={q:0,a:0};let rz=0;
+$('#s_ev').closest('label').insertAdjacentHTML('beforebegin','<div class="wbh"><span>Drehen</span><span><button id="rl">⟲ 90°</button> <button id="rr">⟳ 90°</button></span></div><label class="r"><span>Winkel (frei)<b><i id="o_rot">0</i>°</b></span><input type="range" id="s_rot" min="-45" max="45" step="0.1" value="0"></label>');
+const rotSl=$('#s_rot');
+function geo(SW,SH){const odd=ROT.q&1,Wq=odd?SH:SW,Hq=odd?SW:SH,th=ROT.a*Math.PI/180,c=Math.cos(th),sn=Math.sin(th),
+ sc=ROT.a?1/(Math.abs(c)+Math.max(Wq/Hq,Hq/Wq)*Math.abs(sn)):1;
+ return{SW,SH,Wq,Hq,c,sn,OW:ROT.a?Math.max(16,Math.floor(Wq*sc)):Wq,OH:ROT.a?Math.max(16,Math.floor(Hq*sc)):Hq}}
+function mkGet(SW,SH,fetch){
+ const g=geo(SW,SH),T=[0,0,0],free=!!ROT.a,q=ROT.q,cx=v=>v<0?0:v>=SW?SW-1:v,cy=v=>v<0?0:v>=SH?SH-1:v;
+ const get=(x,y,o)=>{
+  let X=x+.5,Y=y+.5;
+  if(free){const u=X-g.OW/2,v=Y-g.OH/2;X=g.Wq/2+u*g.c+v*g.sn;Y=g.Hq/2-u*g.sn+v*g.c}
+  let sx,sy;
+  if(q==1){sx=Y;sy=SH-X}else if(q==2){sx=SW-X;sy=SH-Y}else if(q==3){sx=SW-Y;sy=X}else{sx=X;sy=Y}
+  if(!free){fetch(cx(Math.floor(sx)),cy(Math.floor(sy)),o);return}
+  sx-=.5;sy-=.5;const x0=Math.floor(sx),y0=Math.floor(sy),fx=sx-x0,fy=sy-y0;o[0]=o[1]=o[2]=0;
+  for(let j=0;j<2;j++)for(let i=0;i<2;i++){const w=(i?fx:1-fx)*(j?fy:1-fy);if(w<1e-4)continue;
+   fetch(cx(x0+i),cy(y0+j),T);o[0]+=T[0]*w;o[1]+=T[1]*w;o[2]+=T[2]*w}};
+ return{g,get}}
+function rotPv(){
+ const{g,get}=mkGet(pw0,ph0,(x,y,o)=>{const i=(y*pw0+x)*3;o[0]=pv0[i];o[1]=pv0[i+1];o[2]=pv0[i+2]});
+ pw=g.OW;ph=g.OH;pv=new Float32Array(pw*ph*3);const u=[0,0,0];
+ for(let y=0;y<ph;y++)for(let x=0;x<pw;x++){get(x,y,u);pv.set(u,(y*pw+x)*3)}
+ const c=$('#cv');c.width=pw;c.height=ph;c.style.display='block';pimg=ctx.createImageData(pw,ph)}
+const rotNow=()=>{if(R&&pv0){rotPv();draw()}};
+function rotDefault(noRender){ROT.q=R?({3:2,6:1,8:3}[R.ori]||0):0;ROT.a=0;rotSl.value=0;$('#o_rot').textContent=0;if(!noRender)rotNow()}
+rotSl.oninput=()=>{ROT.a=+rotSl.value;$('#o_rot').textContent=ROT.a;cancelAnimationFrame(rz);rz=requestAnimationFrame(rotNow)};
+rotSl.ondblclick=()=>{rotSl.value=0;rotSl.oninput()};
+$('#rr').onclick=()=>{ROT.q=(ROT.q+1)&3;rotNow()};
+$('#rl').onclick=()=>{ROT.q=(ROT.q+3)&3;rotNow()};
+// ---------- Zuschnitt (Randpixel) ----------
+$('aside').insertAdjacentHTML('beforeend','<details id="zd"><summary class="wbh">Zuschnitt (Randpixel)</summary>'+[['l','Links'],['r','Rechts'],['t','Oben'],['b','Unten']].map(([k,n])=>`<label class="r"><span>${n} (px)<b id="zo_${k}">0</b></span><input type="range" id="z_${k}" min="0" max="256" step="2" value="0"></label>`).join('')+'</details>');
+let zt=0;
+const sessCrop={};
+function cropCalc(){const b=R.base,v=k=>+$('#z_'+k).value,l=v('l'),r=v('r'),t=v('t'),u=v('b');
+ R.left=b.l+l;R.top=b.t+t;R.aw=Math.max(16,b.aw-l-r);R.ah=Math.max(16,b.ah-t-u)}
+function applyCrop(){if(!R||!R.base)return;sessCrop[R.cam]=['l','r','t','b'].map(k=>+$('#z_'+k).value);R.sessCrop=false;cropCalc();buildPv();setInfo();fillMeta();draw()}
+for(const k of['l','r','t','b'])$('#z_'+k).oninput=()=>{$('#zo_'+k).textContent=$('#z_'+k).value;clearTimeout(zt);zt=setTimeout(applyCrop,150)};
+// ---------- Informationen (Metadaten) ----------
+$('aside').insertAdjacentHTML('beforeend','<details id="md"><summary class="wbh">Informationen (Metadaten)</summary><input id="mdf" placeholder="Suchen …"><div id="mdb">Keine Datei geladen.</div></details>');
+function toolRows(){const f=a=>a.map(x=>+x.toFixed(4)).join(' / ');
+ const r=[['Datei',R.fname+(R.fsize?` (${(R.fsize/1048576).toFixed(1)} MB)`:'')],['Kamera',R.cam||'–'],['Rohbild',`${R.W} × ${R.H} px · ${R.bps} Bit`+(R.cfa?T(' · Bayer-Muster ')+R.pat.map(c=>'RGB'[c]).join(''):'')],['Aktiver Ausschnitt',`${R.aw} × ${R.ah}`+T(' px ab Spalte ')+`${R.left}, ${T('Zeile')} ${R.top}`]];
+ if(R.cfa){r.push(['Schwarzpegel',R.bl.join(' / ')],['Weißpegel (Rohwert)',Math.round(R.bl[0]+1/R.sc)]);if(R.sat)r.push(['Sättigung Grünkanal (erkannt)',Math.round(R.bl[0]+R.sat/R.sc)])}
+ r.push(['Weißabgleich-Faktoren R / G / B',f(R.wb)+(R.autoWB?T(' (geschätzt)'):'')]);if(R.prof)r.push(['Farbprofil',T(R.prof)]);if(R.crop)r.push(['Rand abgeschnitten L / R / O / U',R.crop.join(' / ')+' px']);if(R.gm)r.push(['Objektivabschattung (GainMap)',R.gm.n+T(' Karte(n) angewendet')]);return r}
+function fillMeta(){const el=$('#mdb'),esc=x=>String(x).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+ const secs=[{t:'Auswertung durch das Tool',r:toolRows()}].concat(R.sections||[]);
+ el.innerHTML=secs.filter(q=>q.r.length).map(q=>`<div class="ms">${esc(T(q.t))} (${q.r.length})</div><table>`+q.r.map(([k,v])=>`<tr><td class="mk">${esc(T(k))}</td><td>${esc(T(v))}</td></tr>`).join('')+'</table>').join('');$('#mdf').oninput()}
+$('#mdf').oninput=()=>{const q=$('#mdf').value.toLowerCase();document.querySelectorAll('#mdb tr').forEach(tr=>{tr.style.display=!q||tr.textContent.toLowerCase().includes(q)?'':'none'})};
+// ---------- Farbmatrizen ----------
+const mul=(a,b)=>{const r=[];for(let i=0;i<3;i++)for(let j=0;j<3;j++)r[i*3+j]=a[i*3]*b[j]+a[i*3+1]*b[3+j]+a[i*3+2]*b[6+j];return r};
+const inv=m=>{const[a,b,c,d,e,f,g,h,i]=m,A=e*i-f*h,B=f*g-d*i,C=d*h-e*g,D=a*A+b*B+c*C;return[A,c*h-b*i,b*f-c*e,B,a*i-c*g,c*d-a*f,C,b*g-a*h,a*e-b*d].map(x=>x/D)};
+const SRGB2XYZ=[.4124564,.3575761,.1804375,.2126729,.7151522,.072175,.0193339,.119192,.9503041];
+const GL=new Float32Array(65536),G=new Float32Array(4097);
+for(let i=0;i<65536;i++){const x=i/65535;GL[i]=x<=.04045?x/12.92:((x+.055)/1.055)**2.4}
+for(let i=0;i<=4096;i++){const x=i/4096;G[i]=x<=.0031308?x*12.92:1.055*x**(1/2.4)-.055}
+// ---------- Lossless-JPEG (DNG) ----------
+function mkT(cn,sy){const mx=[],vp=[],mn=[];let c=0,k=0;for(let l=1;l<=16;l++){vp[l]=k;mn[l]=c;c+=cn[l-1];k+=cn[l-1];mx[l]=cn[l-1]?c-1:-1;c<<=1}return{mx,vp,mn,sy}}
+function ljpeg(a){
+ let p=2,ht=[],P_=0,X=0,Y=0,nf=0,cs=[],ss=1;
+ while(p+4<a.length){
+  if(a[p]!=255){p++;continue}
+  const m=a[p+1];if(m==255){p++;continue}if(m==0xD8||m==0){p+=2;continue}
+  const len=(a[p+2]<<8)|a[p+3],q=p+4;
+  if(m==0xC4){let o=q;while(o<p+2+len){const cn=a.subarray(o+1,o+17);let n=0;for(const c of cn)n+=c;ht[a[o]&15]=mkT(cn,a.subarray(o+17,o+17+n));o+=17+n}}
+  else if(m==0xC3){P_=a[q];Y=(a[q+1]<<8)|a[q+2];X=(a[q+3]<<8)|a[q+4];nf=a[q+5];for(let i=0;i<nf;i++)cs.push(0)}
+  else if(m==0xC0||m==0xC1||m==0xC2)throw new Error('Verlustbehaftetes JPEG in DNG wird nicht unterstützt.');
+  else if(m==0xDA){const ns=a[q];for(let i=0;i<ns;i++)cs[i]=a[q+2+i*2]>>4;ss=a[q+1+ns*2];p+=2+len;break}
+  p+=2+len;
+ }
+ let pos=p,bits=0,nb=0;
+ const bit=()=>{if(!nb){let v=a[pos++];if(v==255&&a[pos]==0)pos++;bits=v;nb=8}nb--;return(bits>>nb)&1};
+ const w=X*nf,out=new Uint16Array(w*Y);
+ for(let y=0;y<Y;y++)for(let x=0;x<X;x++)for(let c=0;c<nf;c++){
+  const T=ht[cs[c]];let code=0,s=0;
+  for(let l=1;l<=16;l++){code=(code<<1)|bit();if(T.mx[l]>=0&&code<=T.mx[l]&&code>=T.mn[l]){s=T.sy[T.vp[l]+code-T.mn[l]];break}}
+  let d=0;if(s==16)d=32768;else if(s>0){for(let i=0;i<s;i++)d=(d<<1)|bit();if(d<(1<<(s-1)))d-=(1<<s)-1}
+  const i=y*w+x*nf+c;let pr;
+  if(!y&&!x)pr=1<<(P_-1);else if(!x)pr=out[i-w];else if(!y)pr=out[i-nf];
+  else{const A=out[i-nf],B=out[i-w],C=out[i-w-nf];pr=[0,A,B,C,A+B-C,A+((B-C)>>1),B+((A-C)>>1),(A+B)>>1][ss]}
+  out[i]=(pr+d)&65535;
+ }
+ ljpeg.P=P_;ljpeg.nf=nf;ljpeg.X=X;ljpeg.Y=Y;return out;
+}
+// 4 Komponenten (z. B. DNG): jede Gruppe aus 4 Werten ist ein 2×2-Block (links oben, rechts oben, links unten, rechts unten)
+function quad4(d,X,Y){const w=X*2,o=new Uint16Array(w*Y*2);for(let y=0;y<Y;y++)for(let x=0;x<X;x++){const q=(y*X+x)*4,r=2*y*w+2*x;o[r]=d[q];o[r+1]=d[q+1];o[r+w]=d[q+2];o[r+w+1]=d[q+3]}return o}
+// ---------- Nikon NEF ----------
+const NKT=[[[0,1,5,1,1,1,1,1,1,2,0,0,0,0,0,0],[5,4,3,6,2,7,1,0,8,9,11,10,12,0]],
+ [[0,1,5,1,1,1,1,1,1,2,0,0,0,0,0,0],[0x39,0x5a,0x38,0x27,0x16,5,4,3,2,1,0,11,12,12]],
+ [[0,1,4,2,3,1,2,0,0,0,0,0,0,0,0,0],[5,4,6,3,7,2,8,1,9,0,10,11,12]],
+ [[0,1,4,3,1,1,1,1,1,2,0,0,0,0,0,0],[5,6,4,7,8,3,9,2,1,0,10,11,12,13,14]],
+ [[0,1,5,1,1,1,1,1,1,1,2,0,0,0,0,0],[8,0x5c,0x4b,0x3a,0x29,7,6,5,4,3,2,1,0,13,14]],
+ [[0,1,4,2,2,3,1,2,0,0,0,0,0,0,0,0],[7,6,8,5,9,4,10,3,11,12,2,0,1,13,14]]];
+// Farbmatrizen XYZ→Kamera (x10000) je Modell; Ersatz: D700
+// Fester Zuschnitt (Pixel links/rechts/oben/unten) für Modelle mit maskierten Randspalten
+const NKC={D300:[0,32,0,0],D90:[0,40,0,0],D5000:[0,42,0,0],D5100:[0,36,0,0],D600:[0,40,0,0],D610:[0,10,0,0],D3100:[8,18,0,0],D7000:[0,32,0,0],D800:[0,28,0,0],D300S:[0,32,0,0],D800E:[0,10,0,0]};
+const NKM={D3:[8139,-2171,-663,-8747,16541,2295,-1925,2008,8093],D700:[8139,-2171,-663,-8747,16541,2295,-1925,2008,8093],D300:[9030,-1992,-715,-8465,16302,2255,-2689,3217,8069],D90:[7309,-1403,-519,-8474,16008,2622,-2433,2826,8064],
+ D600:[8178,-2245,-609,-4857,12394,2776,-1207,2086,7298],D610:[8178,-2245,-609,-4857,12394,2776,-1207,2086,7298],D800:[7866,-2108,-555,-4869,12483,2681,-1086,2038,7143],D800E:[7866,-2108,-555,-4869,12483,2681,-1086,2038,7143],
+ D810:[9369,-3195,-791,-4488,12430,2301,-893,1796,6872],D750:[9020,-2890,-715,-4535,12436,2348,-934,1982,6961],D850:[10405,-3755,-1270,-5461,13787,1793,-1040,2015,6785],D500:[8813,-3210,-1036,-4703,12868,2021,-1054,1940,6129],D7500:[8813,-3210,-1036,-4703,12868,2021,-1054,1940,6129],Z6:[8210,-2534,-683,-5355,13338,2212,-1143,1929,6464],
+ D40:[6992,-1668,-806,-8138,15748,2543,-874,850,7897],D40X:[8819,-2543,-911,-9025,16928,2151,-1329,1213,8449],D60:[8736,-2458,-935,-9075,16894,2251,-1354,1242,8263],D3000:[8736,-2458,-935,-9075,16894,2251,-1354,1242,8263],D80:[8628,-2410,-883,-9055,16940,2171,-1490,1363,8520],D200:[8367,-2248,-763,-8758,16447,2422,-1527,1550,8053]};
+function nikonRaw(u,w,h,bps,N){
+ const{T,g16,u8}=N,t=T[150]||T[140];if(!t)throw new Error('Nikon-Linearisierungstabelle nicht gefunden.');
+ const v0=u8(t.p),v1=u8(t.p+1);let p=t.p+2,tree=v0==0x46?2:0;if(v0==0x49||v1==0x58)p+=2110;if(bps==14)tree+=3;
+ const vp=[[g16(p),g16(p+2)],[g16(p+4),g16(p+6)]];p+=8;
+ const max0=(1<<bps)&0x7fff||65536;let max=max0,step=0,split=0;const cs=g16(p);p+=2;
+ const cu=new Uint16Array(70000);for(let i=0;i<70000;i++)cu[i]=i&65535;
+ if(cs>1)step=Math.floor(max/(cs-1));
+ if(v0==0x44&&v1==0x20&&step>0){
+  for(let i=0;i<cs;i++)cu[i*step]=g16(p+i*2);
+  for(let i=0;i<max;i++){const r=i%step,b=i-r;cu[i]=((cu[b]*(step-r)+cu[b+step]*r)/step)|0}
+  split=g16(t.p+562)}
+ else if(v0!=0x46&&cs<=0x4001){for(let i=0;i<cs;i++)cu[i]=g16(p+i*2);max=cs}
+ let pos=0,bb=0,nb=0;
+ const gb=n=>{let v=0;while(n>0){if(!nb){bb=pos<u.length?u[pos]:0;pos++;nb=8}const k=Math.min(nb,n);v=(v<<k)|((bb>>(nb-k))&((1<<k)-1));nb-=k;n-=k}return v};
+ const gh=H=>{let c=0;for(let l=1;l<=16;l++){c=(c<<1)|gb(1);if(H.mx[l]>=0&&c<=H.mx[l]&&c>=H.mn[l])return H.sy[H.vp[l]+c-H.mn[l]]}return 0};
+ let H=mkT(NKT[tree][0],NKT[tree][1]),min=0,err=0;const out=new Uint16Array(w*h),hp=[0,0];
+ for(let row=0;row<h;row++){
+  if(split&&row==split){H=mkT(NKT[tree+1][0],NKT[tree+1][1]);max+=(min=16)<<1}
+  for(let col=0;col<w;col++){
+   const i=gh(H),len=i&15,shl=i>>4;let d=((gb(len-shl)<<1)+1)<<shl>>1;
+   if((d&(1<<(len-1)))==0)d-=(1<<len)-(shl?0:1);
+   if(col<2)hp[col]=vp[row&1][col]=(vp[row&1][col]+d)&65535;else hp[col&1]=(hp[col&1]+d)&65535;
+   if(((hp[col&1]+min)&65535)>=max)err++;
+   const sv=(hp[col&1]<<16)>>16;out[row*w+col]=cu[sv<0?0:sv>0x3fff?0x3fff:sv]}}
+ if(err>w*h/50)throw new Error('Dieses NEF-Format (z. B. „High Efficiency“) wird nicht unterstützt.');
+ let wl=0;for(let i=0;i<max0&&i<70000;i++)if(cu[i]>wl)wl=cu[i];
+ return{d:out,wl:wl||65535}}
+function unpackBE(u,w,h,bps,le){
+ const d=new Uint16Array(w*h),st=Math.floor(u.length/h);
+ if(st>=w*2){const v=new DataView(u.buffer,u.byteOffset,u.byteLength),mk=(1<<bps)-1;for(let r=0;r<h;r++)for(let x=0;x<w;x++)d[r*w+x]=v.getUint16(r*st+x*2,le)&mk;return d}
+ for(let r=0;r<h;r++){let bp=r*st*8;for(let x=0;x<w;x++){let v=0;for(let b=0;b<bps;b++,bp++)v=(v<<1)|((u[bp>>3]>>(7-(bp&7)))&1);d[r*w+x]=v}}
+ return d}
+// ---------- Metadaten (alle Tags der Datei) ----------
+const nm=t=>Object.fromEntries(t.split(',').map(x=>{const i=x.indexOf(':');return[x.slice(0,i),x.slice(i+1)]}));
+const NTIFF=nm("254:NewSubfileType,256:ImageWidth,257:ImageLength,258:BitsPerSample,259:Compression,262:PhotometricInterpretation,270:ImageDescription,271:Make,272:Model,273:StripOffsets,274:Orientation,277:SamplesPerPixel,278:RowsPerStrip,279:StripByteCounts,282:XResolution,283:YResolution,284:PlanarConfiguration,296:ResolutionUnit,305:Software,306:DateTime,315:Artist,317:Predictor,322:TileWidth,323:TileLength,324:TileOffsets,325:TileByteCounts,330:SubIFDs,338:ExtraSamples,513:JPEGInterchangeFormat,514:JPEGInterchangeFormatLength,529:YCbCrCoefficients,530:YCbCrSubSampling,531:YCbCrPositioning,532:ReferenceBlackWhite,700:XMP,33421:CFARepeatPatternDim,33422:CFAPattern,33432:Copyright,33434:ExposureTime,33437:FNumber,33723:IPTC-NAA,34665:ExifIFD,34675:ICCProfile,34850:ExposureProgram,34853:GPSInfo,34855:ISO,34864:SensitivityType,36864:ExifVersion,36867:DateTimeOriginal,36868:DateTimeDigitized,37121:ComponentsConfiguration,37122:CompressedBitsPerPixel,37377:ShutterSpeedValue,37378:ApertureValue,37379:BrightnessValue,37380:ExposureBiasValue,37381:MaxApertureValue,37382:SubjectDistance,37383:MeteringMode,37384:LightSource,37385:Flash,37386:FocalLength,37396:SubjectArea,37500:MakerNote,37510:UserComment,37520:SubSecTime,37521:SubSecTimeOriginal,37522:SubSecTimeDigitized,40960:FlashpixVersion,40961:ColorSpace,40962:PixelXDimension,40963:PixelYDimension,40965:InteropIFD,41486:FocalPlaneXResolution,41487:FocalPlaneYResolution,41488:FocalPlaneResolutionUnit,41492:SubjectLocation,41493:ExposureIndex,41495:SensingMethod,41728:FileSource,41729:SceneType,41730:CFAPattern(EXIF),41985:CustomRendered,41986:ExposureMode,41987:WhiteBalance,41988:DigitalZoomRatio,41989:FocalLengthIn35mmFilm,41990:SceneCaptureType,41991:GainControl,41992:Contrast,41993:Saturation,41994:Sharpness,41995:DeviceSettingDescription,41996:SubjectDistanceRange,42016:ImageUniqueID,42032:CameraOwnerName,42033:BodySerialNumber,42034:LensSpecification,42035:LensMake,42036:LensModel,42037:LensSerialNumber,50706:DNGVersion,50707:DNGBackwardVersion,50708:UniqueCameraModel,50710:CFAPlaneColor,50711:CFALayout,50712:LinearizationTable,50713:BlackLevelRepeatDim,50714:BlackLevel,50717:WhiteLevel,50718:DefaultScale,50719:DefaultCropOrigin,50720:DefaultCropSize,50721:ColorMatrix1,50722:ColorMatrix2,50723:CameraCalibration1,50724:CameraCalibration2,50727:AnalogBalance,50728:AsShotNeutral,50729:AsShotWhitePoint,50730:BaselineExposure,50731:BaselineNoise,50732:BaselineSharpness,50733:BayerGreenSplit,50734:LinearResponseLimit,50735:CameraSerialNumber,50736:LensInfo,50738:AntiAliasStrength,50739:ShadowScale,50740:DNGPrivateData,50741:MakerNoteSafety,50778:CalibrationIlluminant1,50779:CalibrationIlluminant2,50781:RawDataUniqueID,50829:ActiveArea,50830:MaskedAreas,50831:AsShotICCProfile,50936:ProfileName,51008:OpcodeList1,51009:OpcodeList2,51022:OpcodeList3");
+const NGPS=nm("0:GPSVersionID,1:GPSLatitudeRef,2:GPSLatitude,3:GPSLongitudeRef,4:GPSLongitude,5:GPSAltitudeRef,6:GPSAltitude,7:GPSTimeStamp,8:GPSSatellites,9:GPSStatus,10:GPSMeasureMode,11:GPSDOP,12:GPSSpeedRef,13:GPSSpeed,16:GPSImgDirectionRef,17:GPSImgDirection,18:GPSMapDatum,29:GPSDateStamp");
+const NNIK=nm("1:MakerNoteVersion,2:ISO,3:ColorMode,4:Quality,5:WhiteBalance,6:Sharpness,7:FocusMode,8:FlashSetting,9:FlashType,11:WhiteBalanceFineTune,12:WB_RBLevels,13:ProgramShift,14:ExposureDifference,15:ISOSelection,16:DataDump,17:PreviewIFD,18:FlashExposureComp,19:ISOSetting,20:ColorBalance,22:ImageBoundary,23:ExternalFlashExposureComp,24:FlashExposureBracketValue,25:ExposureBracketValue,26:ImageProcessing,27:CropHiSpeed,28:ExposureTuning,29:SerialNumber,30:ColorSpace,31:VRInfo,32:ImageAuthentication,34:ActiveD-Lighting,35:PictureControl,36:WorldTime,37:ISOInfo,42:VignetteControl,128:ImageAdjustment,129:ToneComp,130:AuxiliaryLens,131:LensType,132:Lens,133:ManualFocusDistance,134:DigitalZoom,135:FlashMode,136:AFInfo,137:ShootingMode,139:LensFStops,140:ContrastCurve,141:ColorHue,143:SceneMode,144:LightSource,145:ShotInfo,146:HueAdjustment,147:NEFCompression,148:Saturation,149:NoiseReduction,150:LinearizationTable,151:ColorBalance,152:LensData,153:NEFThumbnailSize,154:SensorPixelSize,156:SceneAssist,158:RetouchHistory,160:SerialNumber(alt),162:ImageDataSize,165:ImageCount,166:DeletedImageCount,167:ShutterCount,168:FlashInfo,169:ImageOptimization,170:Saturation,171:VariProgram,172:ImageStabilization,173:AFResponse,176:MultiExposure,177:HighISONoiseReduction,179:ToningEffect,183:AFInfo2,184:FileInfo,185:AFTune,187:RetouchInfo");
+function metaAll(buf,dv,le,L,N){
+ const SZ=[0,1,1,2,4,8,1,1,2,4,8,4,8],end=buf.byteLength,
+  mkrd=e=>({u8:o=>dv.getUint8(o),u16:o=>dv.getUint16(o,e),u32:o=>dv.getUint32(o,e),s16:o=>dv.getInt16(o,e),s32:o=>dv.getInt32(o,e),f32:o=>dv.getFloat32(o,e),f64:o=>dv.getFloat64(o,e)}),rd=mkrd(le),
+  EN={259:{1:'unkomprimiert',6:'JPEG (alt)',7:'JPEG / Lossless-JPEG',8:'Deflate',32946:'Deflate',34713:'Nikon NEF komprimiert',34892:'Verlustbehaftetes JPEG (DNG)'},262:{0:'WhiteIsZero',1:'BlackIsZero',2:'RGB',6:'YCbCr',32803:'CFA (Rohdaten)',34892:'LinearRaw'},274:{1:'normal',3:'180°',6:'90° im Uhrzeigersinn',8:'90° gegen den Uhrzeigersinn'}};
+ const ifd=(o,r)=>{const t={},n=Math.min(r.u16(o),600);for(let i=0;i<n;i++){const e=o+2+i*12,ty=r.u16(e+2),c=r.u32(e+4),z=SZ[ty]||1;t[r.u16(e)]={ty,c,z,p:z*c>4?r.u32(e+8):e+8}}return t};
+ const sub=o=>{try{return o>0&&o+2<end?ifd(o,rd):null}catch(x){return null}};
+ const fmt=(e,r,tag)=>{const{ty,c}=e,z=e.z||SZ[ty]||1,p=e.p;
+  if(!c)return'';if(p<0||p+z*c>end)return'(außerhalb der Datei)';
+  if(ty==2){let s='';for(let i=0;i<Math.min(c,300);i++){const b=r.u8(p+i);if(!b)break;s+=String.fromCharCode(b)}return s.trim()}
+  if(ty==1||ty==6||ty==7){const mx=tag==700?4000:c<=300?c:32,b=[];for(let i=0;i<Math.min(c,mx);i++)b.push(r.u8(p+i));
+   const pr=b.filter(x=>x>=32&&x<127||x==9||x==10||x==13||x==0).length/b.length;
+   if(pr>.9&&(c<=300||tag==700))return String.fromCharCode(...b).replace(/\0/g,'').trim();
+   return b.slice(0,16).map(x=>x.toString(16).padStart(2,'0')).join(' ')+(c>16?` … (${c} Bytes)`:'')}
+  const val=i=>{const q=p+i*z;switch(ty){case 3:return r.u16(q);case 4:case 13:return r.u32(q);case 8:return r.s16(q);case 9:return r.s32(q);case 11:return+r.f32(q).toPrecision(7);case 12:return+r.f64(q).toPrecision(10);
+   case 5:{const d=r.u32(q+4);return d?+(r.u32(q)/d).toPrecision(7):0}case 10:{const d=r.s32(q+4);return d?+(r.s32(q)/d).toPrecision(7):0}default:return 0}};
+  const a=[];for(let i=0;i<Math.min(c,24);i++)a.push(val(i));let s=a.join(', ');if(c>24)s+=` … (${c} Werte)`;
+  if(c==1){const v=a[0];if(tag==33434)s=v>0&&v<1?`1/${Math.round(1/v)} s (${v} s)`:v+' s';else if(tag==33437)s='f/'+v;else if(tag==37386||tag==41989)s=v+' mm';else if(EN[tag]&&EN[tag][v])s=v+' – '+EN[tag][v]}
+  return s};
+ const out=[],add=(title,t,r,names)=>{if(!t)return;const rows=[];for(const k of Object.keys(t)){if(k=='next')continue;try{rows.push([names[k]||'0x'+(+k).toString(16).toUpperCase().padStart(4,'0'),fmt(t[k],r,+k)])}catch(x){}}out.push({t:title,r:rows})};
+ add('Haupt-IFD (IFD0)',L[0],rd,NTIFF);
+ for(let i=1;i<L.length;i++){let sz='';try{sz=` (${fmt(L[i][256],rd,256)} × ${fmt(L[i][257],rd,257)})`}catch(x){}add('Bild-IFD '+i+sz,L[i],rd,NTIFF)}
+ const exO=L[0][34665]?rd.u32(L[0][34665].p):0,ex=sub(exO);add('Exif',ex,rd,NTIFF);
+ const gO=L[0][34853]?rd.u32(L[0][34853].p):0;add('GPS',sub(gO),rd,NGPS);
+ if(ex&&ex[40965])add('Interoperabilität',sub(rd.u32(ex[40965].p)),rd,NTIFF);
+ if(N)add('Nikon MakerNote',N.T,mkrd(N.mle),NNIK);else if(ex&&ex[37500])out.push({t:'MakerNote',r:[['Hinweis','vorhanden ('+ex[37500].c+' Bytes), Format nicht lesbar']]});
+ const nums=(e,r)=>{const{ty,c}=e,z=e.z||SZ[ty]||1,p=e.p,a=[];if(!c||p<0||p+z*c>end)return a;for(let i=0;i<Math.min(c,8);i++){const q=p+i*z;a.push(ty==3?r.u16(q):ty==4?r.u32(q):ty==8?r.s16(q):ty==9?r.s32(q):ty==5?(r.u32(q+4)?r.u32(q)/r.u32(q+4):0):ty==10?(r.s32(q+4)?r.s32(q)/r.s32(q+4):0):ty==1||ty==7?r.u8(q):0)}return a};
+ const q1=k=>{try{const a=ex&&ex[k]?nums(ex[k],rd):[];return a.length?a[0]:null}catch(x){return null}};
+ const sm={},et=q1(33434),fn=q1(33437),fl=q1(37386),f35=q1(41989),fh=q1(37385),me=q1(37383),iso=q1(34855);
+ if(iso!=null)sm.iso=String(iso);
+ if(et)sm.zeit=et<.25?'1/'+Math.round(1/et)+' s':(+et.toFixed(1))+' s';
+ if(fn)sm.blende='f/'+(+fn.toFixed(1));
+ if(fl)sm.fl=[+fl.toFixed(1),f35?+f35.toFixed(0):0];
+ if(fh!=null)sm.blitz=fh&1?1:0;
+ if(me!=null)sm.messung=me;
+ try{if(ex&&ex[36867]){const d=fmt(ex[36867],rd,36867).match(/^(\d{4}):(\d\d):(\d\d) (\d\d:\d\d:\d\d)/);sm.datum=d?[d[1],d[2],d[3],d[4]]:null}}catch(x){}
+ if(N&&N.T[136]&&N.T[136].c>=4){const t=N.T[136],m=N.u8(t.p),pt=N.u8(t.p+1),mk=N.g16(t.p+2),
+   AM=['Einzelfeld','Dynamisch','Dynamisch (nächstes Objekt)','Gruppe dynamisch','Einzelfeld (weit)','Dynamisch (weit)'],
+   PN=['Mitte','oben','unten','Mitte-links','Mitte-rechts','oben-links','oben-rechts','unten-links','unten-rechts','ganz links','ganz rechts'],f=PN.filter((n,i)=>mk>>i&1);
+  sm.fokus={p:f.length?f:[PN[pt]||('Feld '+pt)],m:AM[m]||('Modus '+m)}}
+ else if(N&&N.T[183])sm.fokus='AFInfo2 vorhanden, Messfeld noch nicht ausgewertet';
+ out.sum=sm;
+ return out}
+// ---------- Kameraprofile (Farbmatrizen) – werden bei Bedarf aus dem Internet geladen ----------
+// Quelle: LibRaw, src/tables/colordata.cpp (LGPL-2.1 / CDDL-1.0). Die Matrizen stammen ursprünglich aus dem
+// Adobe DNG Converter. Es werden keine Daten in diese Datei eingebettet – sie werden erst beim Klick geladen.
+const camM=m=>{const c=mul(m.map(x=>x/1e4),SRGB2XYZ);for(let i=0;i<3;i++){const sm=c[i*3]+c[i*3+1]+c[i*3+2];for(let j=0;j<3;j++)c[i*3+j]/=sm}return inv(c)};
+// ---------- Objektivabschattung (DNG-GainMap, OpcodeList2 – z. B. Google Pixel) ----------
+function gainMaps(a,aw,ah){
+ const dv=new DataView(Uint8Array.from(a).buffer),end=dv.byteLength,ops=[],n=dv.getUint32(0);let p=4;
+ const mk=(len,pts,sp,org)=>{const I=new Int32Array(len),F=new Float32Array(len);
+  for(let y=0;y<len;y++){if(pts<2)continue;let t=((len>1?y/(len-1):0)-org)/sp;if(!(t>0))t=0;if(t>pts-1)t=pts-1;let i=Math.floor(t);if(i>pts-2)i=pts-2;I[y]=i;F[y]=t-i}return[I,F]};
+ for(let i=0;i<n&&p+16<=end;i++){
+  const id=dv.getUint32(p),len=dv.getUint32(p+12),q=p+16;p=q+len;if(p>end)break;
+  if(id!=9||len<76)continue;
+  const u=o=>dv.getUint32(q+o),f=o=>dv.getFloat64(q+o),
+   op={t:u(0),l:u(4),b:u(8),r:u(12),pl:u(16),rp:u(24),cp:u(28),pv:u(32),ph:u(36),sv:f(40),sh:f(48),ov:f(56),oh:f(64),mp:u(72)},cnt=op.pv*op.ph*op.mp;
+  if(op.pl!=0||op.rp<1||op.cp<1||op.rp>2||op.cp>2||op.pv<1||op.ph<1||op.mp<1||cnt>4e6||len<76+4*cnt)continue;
+  if(op.pv>1&&!(op.sv>0)||op.ph>1&&!(op.sh>0))continue;
+  op.g=new Float32Array(cnt);for(let j=0;j<cnt;j++)op.g[j]=dv.getFloat32(q+76+j*4);
+  if(op.g.every(v=>Math.abs(v-1)<1e-4))continue;
+  [op.ri,op.rf]=mk(ah,op.pv,op.sv,op.ov);[op.ci,op.cf]=mk(aw,op.ph,op.sh,op.oh);
+  op.vs=op.pv>1?1:0;op.hs=op.ph>1?1:0;ops.push(op)}
+ if(!ops.length)return null;
+ return{n:ops.length,cell:[0,1,2,3].map(c=>ops.filter(q=>q.t%q.rp==(c>>1)%q.rp&&q.l%q.cp==(c&1)%q.cp))}}
+function gn(ay,ax){
+ const o=R.gm.cell[((ay&1)<<1)|(ax&1)];let g=1;
+ for(let n=0;n<o.length;n++){const q=o[n];if(ay<q.t||ay>=q.b||ax<q.l||ax>=q.r)continue;
+  const i=q.ri[ay],j=q.ci[ax],a=q.rf[ay],b=q.cf[ax],w=q.ph,s=q.mp,G=q.g,r0=i*w,r1=(i+q.vs)*w,j1=j+q.hs;
+  g*=(G[(r0+j)*s]*(1-b)+G[(r0+j1)*s]*b)*(1-a)+(G[(r1+j)*s]*(1-b)+G[(r1+j1)*s]*b)*a}
+ return g}
+// ---------- TIFF / DNG lesen ----------
+// ---------- JPEG öffnen (vom Browser dekodiert, Exif bleibt erhalten) ----------
+async function loadJpeg(buf){
+ const u=new Uint8Array(buf);let p=2,tiff=null,sw=0,sh=0;
+ while(p+4<u.length){if(u[p]!=0xFF){p++;continue}const m=u[p+1];if(m==0xFF){p++;continue}if(m==0xD8||m==0x01||(m>=0xD0&&m<=0xD7)){p+=2;continue}if(m==0xD9||m==0xDA)break;
+  const len=(u[p+2]<<8)|u[p+3];
+  if(m==0xE1&&!tiff&&len>14&&u[p+4]==69&&u[p+5]==120&&u[p+6]==105&&u[p+7]==102&&u[p+8]==0&&u[p+9]==0)tiff=buf.slice(p+10,p+2+len);
+  if(m>=0xC0&&m<=0xCF&&m!=0xC4&&m!=0xC8&&m!=0xCC){sh=(u[p+5]<<8)|u[p+6];sw=(u[p+7]<<8)|u[p+8]}
+  p+=2+len}
+ const okT=tiff&&tiff.byteLength>8&&(new DataView(tiff).getUint16(0)==0x4949||new DataView(tiff).getUint16(0)==0x4D4D);
+ if(!okT)tiff=new Uint8Array([73,73,42,0,8,0,0,0,0,0,0,0,0,0]).buffer;
+ let bmp;try{bmp=await createImageBitmap(new Blob([buf],{type:'image/jpeg'}),{imageOrientation:'none'})}catch(e){throw new Error('JPEG konnte nicht dekodiert werden.')}
+ const w=bmp.width,h=bmp.height,cv=typeof OffscreenCanvas!='undefined'?new OffscreenCanvas(w,h):Object.assign(document.createElement('canvas'),{width:w,height:h}),cx=cv.getContext('2d',{willReadFrequently:true});
+ cx.drawImage(bmp,0,0);if(bmp.close)bmp.close();
+ const id=cx.getImageData(0,0,w,h).data,data=new Uint16Array(w*h*3);
+ for(let i=0,j=0;i<id.length;i+=4,j+=3){data[j]=id[i];data[j+1]=id[i+1];data[j+2]=id[i+2]}
+ const R_=await load(tiff,{w,h,data});
+ if(sw&&(sw!=w||sh!=h))R_.ori=1;
+ if(!R_.cam)R_.cam='';
+ return R_;
+}
+async function load(buf,JP){
+ const dv=new DataView(buf),le=dv.getUint16(0)==0x4949,u16=o=>dv.getUint16(o,le),u32=o=>dv.getUint32(o,le);
+ if(dv.getUint32(4)==0x66747970)throw new Error('Canon CR3 (CRX-Kompression) wird nicht unterstützt. Bitte vorher in DNG umwandeln, z. B. mit dem kostenlosen Adobe DNG Converter.');
+ if(u16(2)!=42)throw new Error('Keine TIFF/DNG-Datei (BigTIFF und andere RAW-Formate werden nicht unterstützt).');
+ const SZ=[0,1,1,2,4,8,1,1,2,4,8,4,8];
+ const rd=(ty,p)=>ty==3?u16(p):ty==4?u32(p):ty==5?u32(p)/u32(p+4):ty==10?dv.getInt32(p,le)/dv.getInt32(p+4,le):ty==8?dv.getInt16(p,le):ty==9?dv.getInt32(p,le):ty==11?dv.getFloat32(p,le):ty==12?dv.getFloat64(p,le):dv.getUint8(p);
+ const ifd=o=>{const t={},n=u16(o);for(let i=0;i<n;i++){const e=o+2+i*12,ty=u16(e+2),c=u32(e+4),z=SZ[ty]||1;t[u16(e)]={ty,c,z,p:z*c>4?u32(e+8):e+8}}t.next=u32(o+2+n*12);return t};
+ const V=(t,k,d)=>{const x=t[k];if(!x)return d;const a=[];for(let i=0;i<x.c;i++)a.push(rd(x.ty,x.p+i*x.z));return a};
+ const L=[],seen=new Set();
+ const walk=o=>{while(o&&!seen.has(o)&&o<buf.byteLength){seen.add(o);const t=ifd(o);L.push(t);for(const s of V(t,330,[]))walk(s);o=t.next}};
+ walk(u32(4));
+ if(!JP&&dv.getUint8(8)==0x43&&dv.getUint8(9)==0x52)throw new Error('Canon CR2 wird nicht mehr unterstützt. Bitte DNG, NEF oder TIFF verwenden.');
+ let mkS='';try{mkS=String.fromCharCode(...(V(L[0],271,[])||[])).toUpperCase()}catch(e){}
+ if(!JP&&mkS.includes('SONY')&&!V(L[0],50706,null))throw new Error('Sony ARW wird nicht mehr unterstützt. Bitte DNG, NEF oder TIFF verwenden.');
+ let N=null,nkWL=65535;
+ try{const ex=V(L[0],34665,[0])[0],e=ex&&ifd(ex)[37500];
+  if(e&&e.c>20&&String.fromCharCode(...[0,1,2,3,4].map(i=>dv.getUint8(e.p+i)))=='Nikon'&&dv.getUint8(e.p+6)>=2){
+   const base=e.p+10,mle=dv.getUint16(base)==0x4949,g16=o=>dv.getUint16(o,mle),g32=o=>dv.getUint32(o,mle),io=base+g32(base+4),n=g16(io),T={};
+   for(let i=0;i<n;i++){const q=io+2+i*12,ty=g16(q+2),c=g32(q+4),z=SZ[ty]||1;T[g16(q)]={ty,c,p:z*c>4?base+g32(q+8):q+8}}
+   N={T,mle,g16,u8:o=>dv.getUint8(o)};const w=T[12];
+   if(w&&w.c>=4&&(w.ty==5||w.ty==11)){const r=[0,1,2,3].map(i=>{if(w.ty==11)return dv.getFloat32(w.p+i*4,mle);const dn=g32(w.p+i*8+4);return dn?g32(w.p+i*8)/dn:0});if(r[0]>0&&r[1]>0&&r[2]>0)N.wb=r}}}
+ catch(e){N=null}
+ let B=null,bs=0;
+ if(JP)B=L[0];else for(const t of L){const ph=V(t,262,[0])[0],cp=V(t,259,[1])[0],raw=ph==32803||ph==34892;
+  if(!(raw||ph<=2)||!(cp==1||cp==8||cp==32946||cp==7&&raw||cp==34713&&raw))continue;
+  const sc=V(t,256,[0])[0]*V(t,257,[0])[0]*(raw?4:1);if(sc>bs){bs=sc;B=t}}
+ if(!B)throw new Error('Kein unterstütztes Bild gefunden (LZW/PackBits-TIFF, verlustbehaftetes DNG und NEF „High Efficiency“ werden nicht unterstützt).');
+ const M=k=>V(B,k,null)||V(L[0],k,null);
+ const W=JP?JP.w:V(B,256)[0],H=JP?JP.h:V(B,257)[0],spp=JP?3:V(B,277,[1])[0],bps=JP?8:V(B,258,[8])[0],cp=JP?1:V(B,259,[1])[0],pr=JP?1:V(B,317,[1])[0],ph=JP?2:V(B,262,[1])[0];
+ if(bps!=8&&bps!=16&&cp!=7&&cp!=34713&&!(cp==1&&(bps==12||bps==14)))throw new Error('Nur 8 und 16 Bit (unkomprimiert/Deflate) bzw. Lossless-JPEG werden unterstützt.');
+ const tw=JP?0:V(B,322,[0])[0],th=tw?V(B,323)[0]:V(B,278,[H])[0],cw=tw||W,off=JP?[]:V(B,tw?324:273),cnt=JP?[]:V(B,tw?325:279),tpr=Math.ceil(W/cw);
+ const data=JP?JP.data:new Uint16Array(W*spp*H);
+ for(let i=0;i<off.length;i++){
+  const x0=(i%tpr)*cw,y0=Math.floor(i/tpr)*th,ch=tw?th:Math.min(th,H-y0);let u=new Uint8Array(buf,off[i],Math.min(cnt[i],buf.byteLength-off[i])),d;
+  if(cp==34713){if(!N)throw new Error('Nikon-MakerNote nicht lesbar (nur NEF mit Nikon-Typ-3-MakerNote werden unterstützt).');const nr=nikonRaw(u,cw,ch,bps,N);d=nr.d;nkWL=nr.wl}
+  else if(cp==1&&(bps==12||bps==14))d=unpackBE(u,cw,ch,bps,le);
+  else if(cp==7){d=ljpeg(u);if(ljpeg.nf==4)d=quad4(d,ljpeg.X,ljpeg.Y)}
+  else{
+   if(cp!=1)u=new Uint8Array(await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer());
+   if(bps==16){const v=new DataView(u.buffer,u.byteOffset,u.byteLength);d=new Uint16Array(u.length>>1);for(let j=0;j<d.length;j++)d[j]=v.getUint16(j*2,le)}else d=Uint16Array.from(u);
+   if(pr==2){const rl=cw*spp,mk=bps==16?65535:255;for(let r=0;r<ch;r++)for(let j=spp;j<rl;j++)d[r*rl+j]=(d[r*rl+j]+d[r*rl+j-spp])&mk}
+  }
+  for(let r=0;r<ch&&y0+r<H;r++){const n=Math.min(cw,W-x0)*spp;data.set(d.subarray(r*cw*spp,r*cw*spp+n),((y0+r)*W+x0)*spp)}
+ }
+ const lt=M(50712);if(lt){const n=lt.length;for(let i=0;i<data.length;i++)data[i]=lt[data[i]<n?data[i]:n-1]}
+ const cfa=ph==32803,A=M(50829)||[0,0,H,W],R_={W,H,spp,data,cfa,bps,top:A[0],left:A[1],ah:A[2]-A[0],aw:A[3]-A[1],gam:!cfa&&!M(50706)&&!M(50721)&&!M(50722)&&ph!=34892};
+ const bl=M(50714)||[0];R_.bl=bl.length>=4?bl.slice(0,4):[bl[0],bl[0],bl[0],bl[0]];
+ if(cfa&&cp==34713&&!M(50714)){const hs=new Uint32Array(65536);let hn=0;
+  for(let y=0;y+1<H;y+=8)for(let x=0;x+1<W;x+=8)for(let j=0;j<2;j++)for(let i=0;i<2;i++){hs[data[(y+j)*W+x+i]]++;hn++}
+  const tg=hn*2e-4;let sm=0,b0=0;for(let v=0;v<65536;v++){sm+=hs[v];if(sm>=tg){b0=v;break}}
+  if(b0>=nkWL*.02&&b0<=nkWL*.08){R_.bl=[b0,b0,b0,b0];R_.blEst=b0}}
+ const wl=(M(50717)||[(cp==34713?nkWL:bps==16||cp==7||lt?65535:bps>8?(1<<bps)-1:255)])[0];R_.sc=1/Math.max(1,wl-R_.bl[0]);
+ if(cfa){const d=M(33421)||[2,2];if(d[0]!=2||d[1]!=2)throw new Error('Nur 2×2-Farbfilter (Bayer) werden unterstützt.');R_.pat=M(33422)||[0,1,1,2];if(R_.pat.some(c=>c>2))throw new Error('Dieses Farbfilter-Muster wird nicht unterstützt.')}
+ if(cfa&&!M(50717)){const st=5,g=[];for(let y=0;y<H;y+=st)for(let x=0;x<W;x+=st)if(R_.pat[((y&1)<<1)|(x&1)]==1)g.push(data[y*W+x]);
+  let mx=0;for(const v of g)if(v>mx)mx=v;const tol=mx>>7;let n=0;for(const v of g)if(v>=mx-tol)n++;
+  R_.sat=n>=Math.max(10,g.length*3e-4)?(mx-tol-R_.bl[0])*R_.sc:0}
+ if(cfa&&!M(50829)&&!M(50717)){
+  const prof=(len,cross,get)=>{const m=[];for(let i=0;i+1<len;i+=2){let s=0,n=0;for(let j=0;j<cross;j+=7){s+=get(i,j)+get(i+1,j);n+=2}m.push(s/n)}return m};
+  const cut=m=>{const L=Math.min(64,m.length>>2);if(m.length<L+32)return 0;let ref=0;for(let i=L;i<L+32;i++)ref+=m[i]/32;if(ref<8)return 0;let n=0;while(n<L&&m[n]<.5*ref)n++;return n*2};
+  const cm=prof(W,H,(x,y)=>data[y*W+x]),rm=prof(H,W,(y,x)=>data[y*W+x]);
+  const l=cut(cm),r=cut(cm.slice().reverse()),t=cut(rm),b=cut(rm.slice().reverse());
+  R_.left+=l;R_.top+=t;R_.aw-=l+r;R_.ah-=t+b;R_.crop=l+r+t+b>0?[l,r,t,b]:null}
+ const n=M(50728)||[1,1,1],wb=[1/n[0],1/n[1],1/n[2]];R_.wb=R_.gam?[1,1,1]:wb.map(x=>x/wb[1]);
+ const cm=M(50722)||M(50721);
+ if(cm&&!R_.gam&&cm.length>=9){let c=mul(cm.slice(0,9),SRGB2XYZ);for(let i=0;i<3;i++){const s=c[i*3]+c[i*3+1]+c[i*3+2];for(let j=0;j<3;j++)c[i*3+j]/=s}R_.M=inv(c)}else R_.M=[1,0,0,0,1,0,0,0,1];
+ if(cfa){const nn=M(50728);
+  if(!(nn&&nn.length>=3&&nn.every(v=>v>0))){
+   const xy=M(50729);let ok=false;
+   if(xy&&xy.length>=2&&xy[1]>0&&cm&&cm.length>=9){const X=xy[0]/xy[1],Z=(1-xy[0]-xy[1])/xy[1],nv=[cm[0]*X+cm[1]+cm[2]*Z,cm[3]*X+cm[4]+cm[5]*Z,cm[6]*X+cm[7]+cm[8]*Z];
+    if(nv.every(v=>v>0)){R_.wb=[nv[1]/nv[0],1,nv[1]/nv[2]];ok=true}}
+   if(!ok)R_.autoWB=true}}
+ const tx=(t,k)=>(V(t,k,[])||[]).map(c=>String.fromCharCode(c)).join('').replace(/\0.*/s,'').trim();
+ R_.cam=(tx(L[0],271)+' '+tx(L[0],272)).trim();R_.mk=tx(L[0],271);R_.md=tx(L[0],272);
+ if(cfa&&!cm){
+  const mk=R_.cam.toUpperCase().replace(/NIKON|CORPORATION|[\s_]/g,''),key=NKM[mk]?mk:null;
+  const cdb=null;let c=mul((cdb||NKM[key||'D700']).map(x=>x/1e4),SRGB2XYZ);for(let i=0;i<3;i++){const s=c[i*3]+c[i*3+1]+c[i*3+2];for(let j=0;j<3;j++)c[i*3+j]/=s}
+  R_.M=inv(c);R_.prof=key||(cdb?cdb.name:'Allgemeines Standardprofil');
+  const mc=NKC[mk];if(mc&&R_.crop){const q=R_.crop;R_.left-=q[0];R_.top-=q[2];R_.aw+=q[0]+q[1];R_.ah+=q[2]+q[3];R_.crop=null}if(mc){R_.left+=mc[0];R_.top+=mc[2];R_.aw-=mc[0]+mc[1];R_.ah-=mc[2]+mc[3];R_.crop=mc.slice()}
+  if(N&&N.wb){R_.wb=[N.wb[0]/N.wb[2],1,N.wb[1]/N.wb[2]];R_.autoWB=false}else R_.autoWB=true}
+ try{
+  const ent=(t,k)=>{const x=t[k];if(!x)return null;const ty=x.ty,c=x.c;
+   if(ty<1||ty>12||x.z*c>2e6||x.p+x.z*c>buf.byteLength)return null;
+   if(k==700||k==33723){const b=[];for(let i=0;i<x.z*c;i++)b.push(dv.getUint8(x.p+i));return[+k,k==700?1:7,b]}
+   const v=[];
+   for(let i=0;i<c;i++){const p=x.p+i*x.z;
+    if(ty==5||ty==10){const sg=ty==10;v.push(sg?dv.getInt32(p,le):u32(p),sg?dv.getInt32(p+4,le):u32(p+4))}
+    else v.push(ty==1||ty==2||ty==7?dv.getUint8(p):ty==6?dv.getInt8(p):ty==3?u16(p):ty==8?dv.getInt16(p,le):ty==9?dv.getInt32(p,le):ty==11?dv.getFloat32(p,le):ty==12?dv.getFloat64(p,le):u32(p))}
+   return[+k,ty,v]};
+  const sub=(k,skip)=>{const o=V(L[0],k,[0])[0],r=[];if(!o||o+2>buf.byteLength)return r;const t=ifd(o);
+   for(const key of Object.keys(t)){if(key=='next'||skip.includes(+key))continue;const e=ent(t,key);if(e)r.push(e)}return r};
+  R_.meta={ifd0:[270,271,272,274,282,283,296,306,315,316,700,33432,33723].map(k=>ent(L[0],k)).filter(Boolean),
+   exif:sub(34665,[37500,40965]),gps:sub(34853,[])};
+ }catch(e){R_.meta=null}
+ try{R_.sections=metaAll(buf,dv,le,L,N);R_.sum=R_.sections.sum||{}}catch(e){R_.sections=[];R_.sum={}}
+ R_.act=[A[0],A[1]];R_.ori=V(L[0],274,[1])[0]||1;
+ if(cfa){
+  const dco=M(50719),dcs=M(50720);
+  if(!R_.crop&&dco&&dcs&&dco.length>=2&&dcs.length>=2){const cx=Math.round(dco[0])&~1,cy=Math.round(dco[1])&~1,cw=Math.round(dcs[0]),ch=Math.round(dcs[1]);
+   if(cx>=0&&cy>=0&&cw>=16&&ch>=16&&cx+cw<=R_.aw&&cy+ch<=R_.ah){R_.left+=cx;R_.top+=cy;R_.aw=cw;R_.ah=ch}}
+  const og=M(51009);
+  if(og&&og.length>12){try{R_.gm=gainMaps(og,A[3]-A[1],A[2]-A[0])}catch(e){R_.gm=null}}}
+ R_.base={l:R_.left,t:R_.top,aw:R_.aw,ah:R_.ah};
+ return R_;
+}
+// ---------- Pixel holen (Bilinear-Demosaic) ----------
+const S3=[0,0,0],N3=[0,0,0];
+function px(x,y,o){
+ const{aw,ah,W,data:d,spp}=R,gm=R.gm,mx=1/R.sc;
+ if(R.cfa){S3[0]=S3[1]=S3[2]=N3[0]=N3[1]=N3[2]=0;
+  for(let j=-1;j<2;j++){const yy=y+j;if(yy<0||yy>=ah)continue;for(let i=-1;i<2;i++){const xx=x+i;if(xx<0||xx>=aw)continue;const k=((yy&1)<<1)|(xx&1),c=R.pat[k];let v=d[(yy+R.top)*W+xx+R.left]-R.bl[k];if(gm&&v>0){v*=gn(yy+R.top-R.act[0],xx+R.left-R.act[1]);if(v>mx)v=mx}S3[c]+=v>0?v:0;N3[c]++}}
+  for(let c=0;c<3;c++)o[c]=N3[c]?S3[c]/N3[c]*R.sc:0}
+ else{const i=((y+R.top)*W+x+R.left)*spp;for(let c=0;c<3;c++){const v=Math.max(0,d[i+(spp>1?c:0)]-R.bl[0])*R.sc;o[c]=R.gam?GL[Math.min(65535,(v*65535+.5)|0)]:v}}
+}
+// ---------- Entwicklung ----------
+let G16=null,L16=null;
+function tabs16(){if(G16)return;G16=new Float32Array(65538);L16=new Float32Array(65538);
+ for(let i=0;i<=65536;i++){const x=i/65536;G16[i]=x<=.0031308?x*12.92:1.055*x**(1/2.4)-.055;L16[i]=x<=.04045?x/12.92:((x+.055)/1.055)**2.4}G16[65537]=G16[65536];L16[65537]=L16[65536]}
+const lut=(T,v)=>{const y=v*65536,i=y|0;return T[i]+(T[i+1]-T[i])*(y-i)};
+function mkDev(mode=0){
+ if(mode)tabs16();
+ const m=R.wb.slice(),M=R.M;m[0]*=2**(P.temp/200);m[2]*=2**(-P.temp/200);m[1]*=2**(-P.tint/200);
+ const e=2**P.ev,k=1+.7*P.con/100,sat=1+P.sat/100,hl=P.hl/100*1.2,sh=P.sh/100*1.2,t=[0,0,0],cu=CU;
+ const E=mode?x=>x<=0?0:x>=1?1:lut(G16,x):x=>x<=0?0:x>=1?1:G[(x*4096)|0];
+ let cs=R.cfa&&R.sat?R.sat:0;
+ if(!cs&&R.cfa&&typeof pv0!=='undefined'&&pv0){if(R.satEst===undefined){let gm=0;for(let i=1;i<pv0.length;i+=3)if(pv0[i]>gm)gm=pv0[i];R.satEst=gm>.9?gm:0}cs=R.satEst}
+ const gc=cs*m[1],cl=cs*Math.min(m[0],m[1],m[2]);
+ return(r,g,b,out,o)=>{
+  if(cs){const q=Math.max(r,g,b)/cs;r*=m[0];g*=m[1];b*=m[2];
+   if(q>.88){const w=q>=.97?1:(q-.88)/.09,wc=w*w*(3-2*w);r+=wc*(cl-r);g+=wc*(cl-g);b+=wc*(cl-b)}}
+  else{r*=m[0];g*=m[1];b*=m[2]}
+  r*=e;g*=e;b*=e;
+  t[0]=E(M[0]*r+M[1]*g+M[2]*b);t[1]=E(M[3]*r+M[4]*g+M[5]*b);t[2]=E(M[6]*r+M[7]*g+M[8]*b);
+  const L=.2126*t[0]+.7152*t[1]+.0722*t[2],dl=sh*L*(1-L)**3+hl*L**3*(1-L);
+  for(let c=0;c<3;c++){let v=t[c]+dl;v=(v-.5)*k+.5;v=L+(v-L)*sat;
+   if(cu[0])v=ap(cu[0],v);if(cu[c+1])v=ap(cu[c+1],v);
+   if(!mode)out[o+c]=v*255;else{v=v<0?0:v>1?1:v;out[o+c]=(mode==1?v:lut(L16,v))*65535+.5}}
+  if(!mode)out[o+3]=255}
+}
+function draw(){if(!R||!pv)return;const f=mkDev(),n=pw*ph,dd=pimg.data;for(let i=0;i<n;i++)f(pv[i*3],pv[i*3+1],pv[i*3+2],dd,i*4);ctx.putImageData(pimg,0,0);hist()}
+function buildPv(){
+  const k=Math.max(1,Math.ceil(Math.max(R.aw,R.ah)/1600));pw0=Math.floor(R.aw/k);ph0=Math.floor(R.ah/k);pv0=new Float32Array(pw0*ph0*3);const u=[0,0,0];
+  for(let y=0;y<ph0;y++)for(let x=0;x<pw0;x++){px(x*k,y*k,u);pv0.set(u,(y*pw0+x)*3)}
+  if(R.autoWB){let w=[2,1,1.5];const n3=pv0.length/3;
+   for(let it=0;it<6;it++){const a=[0,0,0];let cnt=0;
+    for(let i=0;i<pv0.length;i+=3){const r=pv0[i]*w[0],g=pv0[i+1],b=pv0[i+2]*w[2],mx=Math.max(r,g,b),mn=Math.min(r,g,b);
+     if(mx<.9&&mx>.05&&(mx-mn)/mx<.22){a[0]+=pv0[i];a[1]+=pv0[i+1];a[2]+=pv0[i+2];cnt++}}
+    if(cnt<n3*.01||a[0]<=0||a[2]<=0)break;w=[a[1]/a[0],1,a[1]/a[2]]}
+   R.wb=w}
+  rotPv();
+}
+function setSum(){const m=R.sum||{},de=LANG=='de',D=m.datum,
+ MET={0:'unbekannt',1:'Durchschnitt',2:'Mittenbetont',3:'Spot',4:'Mehrfeld-Spot',5:'Matrix',6:'Teilmessung',255:'andere'},
+ tn=q=>/^(Feld|Modus) \d+$/.test(q)?T(q.split(' ')[0]+' ')+q.split(' ')[1]:T(q),
+ dat=D?(de?`${D[2]}.${D[1]}.${D[0]} ${D[3]}`:`${D[0]}-${D[1]}-${D[2]} ${D[3]}`):null,
+ foc=m.fokus?(typeof m.fokus=='string'?T(m.fokus):m.fokus.p.map(tn).join(', ')+' ('+tn(m.fokus.m)+')'):null,
+ me=m.messung!=null?(MET[m.messung]?T(MET[m.messung]):T('Nr. ')+m.messung):null,
+ bw=m.fl?m.fl[0]+' mm'+(m.fl[1]?` (${T('KB')} ${m.fl[1]} mm)`:''):null,
+ bl=m.blitz!=null?T(m.blitz?'an (ausgelöst)':'aus'):null,
+ rows=[['Datei',R.fname],['Aufnahme',dat],['ISO',m.iso],['Zeit / Blende',[m.zeit,m.blende].filter(Boolean).join(' · ')],['Brennweite',bw],['Blitz',bl],['Messung',me],['Fokusfeld',foc]],
+ esc=x=>String(x).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+ $('#sum').innerHTML=rows.map(([k,v])=>`<b>${T(k)}</b><span>${v?esc(v):'–'}</span>`).join('')}
+function setInfo(){$('#info').textContent=`${R.cam||T('Kamera unbekannt')}\n${R.aw} × ${R.ah} px · ${R.bps} Bit · ${R.cfa?T('Rohdaten (Bayer)'):'RGB'}`+(R.prof?`\n${T('Farbprofil')}: ${T(R.prof)}`:'')+(R.crop?`\n${T('Rand abgeschnitten (L/R/O/U)')}: ${R.crop.join(' / ')} px`:'')+(R.sessCrop?'\n'+T('Zuschnitt aus dieser Sitzung übernommen'):'')+(R.autoWB?'\n'+T('Weißabgleich: geschätzt (Pipette nutzen)'):'')+(R.blEst?'\n'+T('Schwarzwert: geschätzt')+' ('+R.blEst+')':'')+(R.gm?'\n'+T('Objektivabschattung (GainMap) korrigiert'):'')}
+async function open(f){
+ msg(T('Lade ')+f.name+' …');await tick();
+ try{const buf=await f.arrayBuffer();const hd=new Uint8Array(buf,0,2);R=null;R=(hd[0]==255&&hd[1]==216)?await loadJpeg(buf):await load(buf);name=f.name.replace(/\.[^.]+$/,'');
+  R.fname=f.name;R.fsize=f.size;const c0=sessCrop[R.cam]||[0,0,0,0];['l','r','t','b'].forEach((q,i)=>{$('#z_'+q).value=c0[i];$('#zo_'+q).textContent=c0[i]});R.sessCrop=c0.some(Boolean);rotDefault(true);cropCalc();
+  buildPv();setInfo();setSum();fillMeta();
+  msg('');draw()}
+ catch(e){R=null;pv=null;msg(T('Fehler: ')+T(String(e.message||e)))}
+}
+async function exp(type){
+ if(!R)return;if(['tif','dng','png16','tif8','dng8'].includes(type))return exp16(type);const f=mkDev(),{g:G2,get:gp}=mkGet(R.aw,R.ah,px),c=document.createElement('canvas');c.width=G2.OW;c.height=G2.OH;
+ const x=c.getContext('2d'),id=x.createImageData(G2.OW,G2.OH),u=[0,0,0];
+ for(let y=0;y<G2.OH;y++){for(let xx=0;xx<G2.OW;xx++){gp(xx,y,u);f(u[0],u[1],u[2],id.data,(y*G2.OW+xx)*4)}if(y%64==0){msg(`${T('Entwickle in voller Größe …')} ${Math.round(y/G2.OH*100)} %`);await tick()}}
+ x.putImageData(id,0,0);c.toBlob(async b=>{try{b=await(type=='png'?metaPng:metaJpeg)(b,metaOut(false,G2.OW,G2.OH))}catch(e){}save(b,name+(type=='png'?'.png':'.jpg'))},type=='png'?'image/png':'image/jpeg',1);msg('');
+}
+// ---------- 16-Bit-Export (TIFF / DNG) ----------
+function iccSRGB(){
+ const enc=s=>[...s].map(c=>c.charCodeAt(0));
+ const xyz=(x,y,z)=>{const d=new DataView(new ArrayBuffer(20));d.setUint32(0,0x58595A20);[x,y,z].forEach((v,i)=>d.setInt32(8+i*4,Math.round(v*65536)));return new Uint8Array(d.buffer)};
+ const text=s=>{const a=enc(s+'\0'),b=new Uint8Array(8+a.length);b.set(enc('text'));b.set(a,8);return b};
+ const desc=s=>{const a=enc(s+'\0'),b=new Uint8Array(12+a.length+78),d=new DataView(b.buffer);b.set(enc('desc'));d.setUint32(8,a.length);b.set(a,12);return b};
+ const curv=(()=>{const N=1024,d=new DataView(new ArrayBuffer(12+N*2));d.setUint32(0,0x63757276);d.setUint32(8,N);
+  for(let i=0;i<N;i++){const x=i/(N-1);d.setUint16(12+i*2,Math.round((x<=.04045?x/12.92:((x+.055)/1.055)**2.4)*65535))}return new Uint8Array(d.buffer)})();
+ const B=[desc('sRGB IEC61966-2.1'),text('Public Domain'),xyz(.9642,1,.8249),xyz(.4360747,.2225045,.0139322),xyz(.3850649,.7168786,.0971045),xyz(.1430804,.0606169,.7141733),curv];
+ const T=[['desc',0],['cprt',1],['wtpt',2],['rXYZ',3],['gXYZ',4],['bXYZ',5],['rTRC',6],['gTRC',6],['bTRC',6]];
+ const al=n=>(n+3)&~3,off=[];let p=al(128+4+T.length*12);
+ for(const b of B){off.push(p);p+=al(b.length)}
+ const out=new Uint8Array(p),d=new DataView(out.buffer);
+ d.setUint32(0,p);d.setUint32(8,0x02100000);out.set(enc('mntrRGB XYZ '),12);
+ [2026,1,1,0,0,0].forEach((v,i)=>d.setUint16(24+i*2,v));out.set(enc('acsp'),36);
+ [.9642,1,.8249].forEach((v,i)=>d.setInt32(68+i*4,Math.round(v*65536)));
+ d.setUint32(128,T.length);
+ T.forEach(([sg,bi],i)=>{out.set(enc(sg),132+i*12);d.setUint32(136+i*12,off[bi]);d.setUint32(140+i*12,B[bi].length)});
+ B.forEach((b,i)=>out.set(b,off[i]));
+ return out;
+}
+// E: [[Tag,Typ,Werte],…] (Typ 1 BYTE, 2 ASCII, 3 SHORT, 4 LONG, 5 RATIONAL, 7 UNDEFINED, 10 SRATIONAL, 11 FLOAT; RATIONAL als [Zähler,Nenner,…])
+// ifds: [{n:Name,E:[[Tag,Typ,Werte],…],fix:{Tag:'hl'|'oJ'|IFD-Name|Zahl},next:Name}] – das erste IFD ist IFD0
+function mkTiff(ifds,jpg){
+ const SZ={1:1,2:1,3:2,4:4,5:8,6:1,7:1,8:2,9:4,10:8,11:4,12:8},cnt=e=>e[1]==5||e[1]==10?e[2].length/2:e[2].length,zz=e=>SZ[e[1]]*cnt(e),
+  sz=A=>2+A.length*12+4+A.reduce((t,e)=>t+(zz(e)>4?(zz(e)+1)&~1:0),0),off={};
+ let o=8;for(const I of ifds){I.E=I.E.slice().sort((a,b)=>a[0]-b[0]);off[I.n]=o;o+=sz(I.E)}
+ const oJ=o,hl=oJ+(jpg?(jpg.length+1)&~1:0),d=new DataView(new ArrayBuffer(hl));
+ d.setUint16(0,0x4949);d.setUint16(2,42,true);d.setUint32(4,8,true);
+ const tok=v=>typeof v=='string'?(v=='hl'?hl:v=='oJ'?oJ:off[v]):v;
+ for(const I of ifds){
+  const A=I.E,n=A.length,b0=off[I.n];d.setUint16(b0,n,true);let xp=b0+2+n*12+4;
+  A.forEach((e,i)=>{
+   const tg=e[0],ty=e[1],c=cnt(e),z=zz(e),q=b0+2+i*12,v=I.fix&&I.fix[tg]!==undefined?[tok(I.fix[tg])]:e[2];
+   d.setUint16(q,tg,true);d.setUint16(q+2,ty,true);d.setUint32(q+4,c,true);
+   let p=q+8;if(z>4){d.setUint32(q+8,xp,true);p=xp;xp+=(z+1)&~1}
+   for(let j=0;j<v.length;j++){
+    if(ty==1||ty==2||ty==7)d.setUint8(p+j,v[j]);
+    else if(ty==6)d.setInt8(p+j,v[j]);
+    else if(ty==3)d.setUint16(p+j*2,v[j],true);
+    else if(ty==8)d.setInt16(p+j*2,v[j],true);
+    else if(ty==4||ty==5)d.setUint32(p+j*4,v[j],true);
+    else if(ty==9||ty==10)d.setInt32(p+j*4,v[j],true);
+    else if(ty==11)d.setFloat32(p+j*4,v[j],true);
+    else if(ty==12)d.setFloat64(p+j*8,v[j],true)}
+  });
+  d.setUint32(b0+2+n*12,I.next?off[I.next]:0,true);
+ }
+ if(jpg)new Uint8Array(d.buffer).set(jpg,oJ);
+ return d.buffer;
+}
+// ---------- Exif / Metadaten der Originaldatei übernehmen ----------
+const bs=s=>[...s].map(c=>c.charCodeAt(0));
+const cat=(...a)=>{const r=new Uint8Array(a.reduce((t,x)=>t+x.length,0));let o=0;for(const x of a){r.set(x,o);o+=x.length}return r};
+const note=t=>{msg(t);setTimeout(()=>msg(''),7000)};
+// Entwicklungseinstellungen (Lightroom/Camera Raw), eingebettete Vorschauen und alte Bildmaße aus dem XMP entfernen
+function xmpClean(b){
+ let t=new TextDecoder().decode(new Uint8Array(b));
+ t=t.replace(/<crs:(\w+)\b[^>]*?\/>/g,'').replace(/<crs:(\w+)\b[^>]*>[\s\S]*?<\/crs:\1>/g,'').replace(/\s+crs:[\w.-]+="[^"]*"/g,'')
+  .replace(/<xmp:Thumbnails>[\s\S]*?<\/xmp:Thumbnails>/g,'')
+  .replace(/\s+tiff:Orientation="[^"]*"/g,'').replace(/<tiff:Orientation>[^<]*<\/tiff:Orientation>/g,'').replace(/\s+(?:tiff:ImageWidth|tiff:ImageLength|exif:PixelXDimension|exif:PixelYDimension)="[^"]*"/g,'');
+ return new TextEncoder().encode(t);
+}
+function metaOut(dng,w,h){
+ const m=R.meta||{ifd0:[],exif:[],gps:[]},cp=e=>[e[0],e[1],e[2].slice()];
+ const x=m.ifd0.find(e=>e[0]==700),i=m.ifd0.find(e=>e[0]==33723);
+ let exif=m.exif.map(cp);
+ if(exif.length){exif=exif.filter(e=>e[0]!=40961&&e[0]!=40962&&e[0]!=40963);exif.push([40962,4,[w]],[40963,4,[h]]);if(!dng)exif.push([40961,3,[1]])}
+ return{ifd0:m.ifd0.filter(e=>e[0]!=700&&e[0]!=33723&&e[0]!=274).map(cp),exif,gps:m.gps.map(cp),xmp:x?Array.from(xmpClean(x[2])):null,iptc:i?i[2].slice():null};
+}
+const mergeE=(E,L)=>{for(const e of L){const k=E.findIndex(a=>a[0]==e[0]);if(k<0)E.push(e);else E[k]=e}return E};
+function exifBlob(M){
+ if(!M.ifd0.length&&!M.exif.length&&!M.gps.length)return null;
+ const E=M.ifd0.filter(e=>e[0]!=305).concat([[305,2,asc('RAW entwickeln')]]),I=[{n:'a',E,fix:{}}];
+ if(M.exif.length){E.push([34665,4,[0]]);I[0].fix[34665]='x';I.push({n:'x',E:M.exif})}
+ if(M.gps.length){E.push([34853,4,[0]]);I[0].fix[34853]='g';I.push({n:'g',E:M.gps})}
+ return new Uint8Array(mkTiff(I));
+}
+async function metaJpeg(b,M){
+ const u=new Uint8Array(await b.arrayBuffer()),ex=exifBlob(M),sg=[];
+ const seg=(m,p)=>{const L=p.length+2;if(L>65535)return null;const r=new Uint8Array(L+2);r[0]=255;r[1]=m;r[2]=L>>8;r[3]=L&255;r.set(p,4);return r};
+ const add=(m,p,nm)=>{const r=seg(m,p);if(r)sg.push(r);else note(nm+T(' ist für JPEG zu groß und wurde nicht übernommen.'))};
+ if(ex)add(0xE1,cat(Uint8Array.from(bs('Exif\0\0')),ex),'Exif');
+ if(M.xmp)add(0xE1,cat(Uint8Array.from(bs('http://ns.adobe.com/xap/1.0/\0')),Uint8Array.from(M.xmp)),'XMP');
+ if(M.iptc){const n=M.iptc.length;add(0xED,cat(Uint8Array.from([...bs('Photoshop 3.0\0'),...bs('8BIM'),4,4,0,0,n>>>24,(n>>16)&255,(n>>8)&255,n&255]),Uint8Array.from(M.iptc),new Uint8Array(n&1)),'IPTC')}
+ return new Blob([u.subarray(0,2),...sg,u.subarray(2)],{type:'image/jpeg'});
+}
+function pngMeta(M){
+ const ex=exifBlob(M),r=[];
+ if(ex)r.push(pngChunk('eXIf',ex));
+ if(M.xmp)r.push(pngChunk('iTXt',cat(Uint8Array.from([...bs('XML:com.adobe.xmp'),0,0,0,0,0]),Uint8Array.from(M.xmp))));
+ return r;
+}
+async function metaPng(b,M){const u=new Uint8Array(await b.arrayBuffer());return new Blob([u.subarray(0,33),...pngMeta(M),u.subarray(33)],{type:'image/png'})}
+// Vorschaubild: JPEG mit 100 % Qualität aus dem Mittelwert (Box-Filter) der exportierten Pixel
+async function mkPrev(t,lin){
+ const{tw,th,acc,cn}=t,c=document.createElement('canvas');c.width=tw;c.height=th;
+ const x=c.getContext('2d'),id=x.createImageData(tw,th),dd=id.data;
+ for(let i=0;i<tw*th;i++){const n=cn[i]||1;for(let k=0;k<3;k++){let v=acc[i*3+k]/n/65535;if(lin)v=v<=0?0:v>=1?1:lut(G16,v);dd[i*4+k]=v*255}dd[i*4+3]=255}
+ x.putImageData(id,0,0);
+ const b=await new Promise(r=>c.toBlob(r,'image/jpeg',1));
+ if(!b)return null;
+ const by=new Uint8Array(await b.arrayBuffer());let ss=[2,2];
+ for(let i=2;i+11<by.length&&by[i]==255;){const m=by[i+1];if(m>=0xC0&&m<=0xC2){if(by[i+9]==3)ss=[by[i+11]>>4,by[i+11]&15];break}i+=2+((by[i+2]<<8)|by[i+3])}
+ return{bytes:by,w:tw,h:th,ss};
+}
+const asc=s=>[...s.replace(/[^\x20-\x7e]/g,'?')].map(c=>c.charCodeAt(0)).concat(0);
+const rat=(a,den=1000000)=>a.flatMap(v=>[Math.round(v*den),den]);
+async function dev16(mode,thumb){
+ const f=mkDev(mode),{g:G2,get:gp}=mkGet(R.aw,R.ah,px),w=G2.OW,h=G2.OH,u=[0,0,0],parts=[],step=32;
+ const k=Math.max(1,Math.ceil(Math.max(w,h)/1024)),tw=Math.ceil(w/k),th=Math.ceil(h/k);
+ const T=thumb?{tw,th,acc:new Float32Array(tw*th*3),cn:new Uint32Array(tw*th)}:null;
+ for(let y0=0;y0<h;y0+=step){
+  const n=Math.min(step,h-y0),a=new Uint16Array(n*w*3);
+  for(let y=0;y<n;y++)for(let x=0;x<w;x++){gp(x,y0+y,u);f(u[0],u[1],u[2],a,(y*w+x)*3)}
+  if(T)for(let y=0;y<n;y++){const r=(((y0+y)/k)|0)*tw;for(let x=0;x<w;x++){const i=r+((x/k)|0),s=(y*w+x)*3;T.cn[i]++;T.acc[i*3]+=a[s];T.acc[i*3+1]+=a[s+1];T.acc[i*3+2]+=a[s+2]}}
+  parts.push(a);msg(`${T('Entwickle in voller Größe …')} ${Math.round((y0+n)/h*100)} %`);await tick()}
+ parts.thumb=T;return parts;
+}
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+const crc=(a,c=-1)=>{for(let i=0;i<a.length;i++)c=CRC[(c^a[i])&255]^(c>>>8);return c};
+function pngChunk(ty,data){
+ const b=new Uint8Array(12+data.length),d=new DataView(b.buffer);
+ d.setUint32(0,data.length);for(let i=0;i<4;i++)b[4+i]=ty.charCodeAt(i);b.set(data,8);
+ d.setUint32(8+data.length,(crc(b.subarray(4,8+data.length))^-1)>>>0);return b;
+}
+async function mkPng(parts,w,h,M){
+ const rows=[],rl=1+w*6;
+ for(const a of parts){const n=a.length/(w*3),o=new Uint8Array(n*rl);
+  for(let y=0;y<n;y++){let q=y*rl;o[q++]=0;const s=y*w*3;for(let i=0;i<w*3;i++){const v=a[s+i];o[q++]=v>>8;o[q++]=v&255}}
+  rows.push(o)}
+ parts.length=0;
+ const z=await new Response(new Blob(rows).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer();
+ const ih=new Uint8Array(13),d=new DataView(ih.buffer);d.setUint32(0,w);d.setUint32(4,h);ih[8]=16;ih[9]=2;
+ return new Blob([new Uint8Array([137,80,78,71,13,10,26,10]),pngChunk('IHDR',ih),pngChunk('sRGB',new Uint8Array([0])),...(M?pngMeta(M):[]),pngChunk('IDAT',new Uint8Array(z)),pngChunk('IEND',new Uint8Array(0))],{type:'image/png'});
+}
+async function exp16(type){
+ try{
+  if(new Uint8Array(new Uint16Array([1]).buffer)[0]!==1)throw new Error('Big-Endian-System wird nicht unterstützt.');
+  const b8=type=='tif8'||type=='dng8',dng=type=='dng'||type=='dng8',w=geo(R.aw,R.ah).OW,h=geo(R.aw,R.ah).OH;
+  const parts=await dev16(dng&&!b8?2:1,type!='png16');
+  if(b8)for(let k=0;k<parts.length;k++){const a=parts[k],o=new Uint8Array(a.length);for(let i=0;i<a.length;i++)o[i]=Math.round(a[i]/257);parts[k]=o}
+  msg('Schreibe Datei …');await tick();
+  const M=metaOut(dng,w,h);
+  if(type=='png16'){save(await mkPng(parts,w,h,M),name+'_16bit.png');msg('');return}
+  const bytes=w*h*(b8?3:6),sw=asc('RAW entwickeln');
+  const base=[[256,4,[w]],[257,4,[h]],[258,3,b8?[8,8,8]:[16,16,16]],[259,3,[1]],[273,4,[0]],[274,3,[1]],[277,3,[3]],[278,4,[h]],[279,4,[bytes]],[284,3,[1]],[305,2,sw]];
+  let E;
+  if(!dng)E=base.concat([[262,3,[2]],[282,5,[300,1]],[283,5,[300,1]],[296,3,[2]],[34675,7,Array.from(iccSRGB())]]);
+  else{
+   E=base.concat([[262,3,[34892]],[271,2,sw],[272,2,asc('Linear RGB')],
+    [50706,1,[1,4,0,0]],[50707,1,[1,4,0,0]],[50708,2,asc(b8?'Linear RGB (8 Bit)':'Linear RGB (16 Bit)')],[50717,3,[65535,65535,65535]],...(b8?[[50712,3,Array.from({length:256},(_,i)=>{const x=i/255;return Math.round((x<=.04045?x/12.92:((x+.055)/1.055)**2.4)*65535)})]]:[]),
+    [50721,10,rat([3.2404542,-1.5371385,-.4985314,-.969266,1.8760108,.041556,.0556434,-.2040259,1.0572252])],
+    [50728,5,[1,1,1,1,1,1]],[50778,3,[21]],[50936,2,asc('Linear')],[50940,11,[0,0,1,1]],[50941,4,[3]],
+    [50964,10,rat([.4360747,.3850649,.1430804,.2225045,.7168786,.0606169,.0139322,.0971045,.7141733])]]);
+  }
+  mergeE(E,M.ifd0);
+  if(M.xmp)mergeE(E,[[700,1,M.xmp]]);
+  if(M.iptc)mergeE(E,[[33723,7,M.iptc]]);
+  const A={n:'a',E,fix:{273:'hl'}},I=[A];
+  if(M.exif.length){E.push([34665,4,[0]]);A.fix[34665]='x';I.push({n:'x',E:M.exif})}
+  if(M.gps.length){E.push([34853,4,[0]]);A.fix[34853]='g';I.push({n:'g',E:M.gps})}
+  const pv=await mkPrev(parts.thumb,dng&&!b8);
+  if(pv){const L=pv.bytes.length;
+   if(dng){E.push([330,4,[0]]);A.fix[330]='p';
+    I.push({n:'p',fix:{273:'oJ'},E:[[254,4,[1]],[256,4,[pv.w]],[257,4,[pv.h]],[258,3,[8,8,8]],[259,3,[7]],[262,3,[6]],[273,4,[0]],[277,3,[3]],[278,4,[pv.h]],[279,4,[L]],[284,3,[1]],[530,3,pv.ss],[531,3,[1]]]})}
+   else{A.next='p';I.push({n:'p',fix:{513:'oJ'},E:[[259,3,[6]],[282,5,[72,1]],[283,5,[72,1]],[296,3,[2]],[513,4,[0]],[514,4,[L]]]})}}
+  const head=mkTiff(I,pv&&pv.bytes);
+  save(new Blob([head,...parts],{type:dng?'image/x-adobe-dng':'image/tiff'}),name+(b8?'_8bit':'_16bit')+(dng?'.dng':'.tif'));
+  msg('');
+ }catch(e){msg(T('Fehler beim Export: ')+T(String(e.message||e)));setTimeout(()=>msg(''),6000)}
+}
+const save=(b,n)=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000)};
+$('#fi').onchange=e=>e.target.files[0]&&open(e.target.files[0]);
+$('#rs').onclick=()=>{for(const[k,,,,,d]of S)$('#s_'+k).value=d;readP();CP=CP.map(()=>[[0,0],[1,1]]);pts=CP[cc];curveChanged();rotDefault()};
+const mn=$('#exm'),closeM=()=>{mn.hidden=true};
+$('#ex').onclick=e=>{e.stopPropagation();if(!mn.hidden)return closeM();mn.hidden=false;mn.style.left='0px';const o=mn.getBoundingClientRect().right-(innerWidth-8);if(o>0)mn.style.left=-o+'px'};
+mn.onclick=e=>{const b=e.target.closest('button');if(!b)return;closeM();if(!R)return note('Bitte zuerst eine Datei öffnen.');exp(b.dataset.t)};
+document.addEventListener('click',e=>{if(!mn.contains(e.target))closeM()});
+document.addEventListener('keydown',e=>{if(e.key=='Escape'){closeM();setPick(false)}});
+$('#es').onclick=()=>R&&save(new Blob(['[Entwicklung]\n'+S.map(([k])=>k+'='+P[k]).join('\n')+'\nkurve='+cstr(CP[0])+'\nkurve_r='+cstr(CP[1])+'\nkurve_g='+cstr(CP[2])+'\nkurve_b='+cstr(CP[3])+'\n'],{type:'text/plain'}),name+'.txt');
+$('#fl').onchange=async e=>{const f=e.target.files[0];if(!f)return;for(const l of(await f.text()).split(/\r?\n/)){const q=l.match(/^kurve(?:_([rgb]))?=(.+)$/);if(q)setCurve(q[2].trim(),q[1]?'rgb'.indexOf(q[1])+1:0);const m=l.match(/^(\w+)=(-?[\d.]+)/);if(m&&$('#s_'+m[1]))$('#s_'+m[1]).value=m[2]}readP();draw()};
+document.ondragover=e=>e.preventDefault();document.ondrop=e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f)open(f)};
+
+// ---------- Sprache anwenden ----------
+function trDom(){
+ const skip=new Set(['SCRIPT','STYLE','SELECT']),w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,{acceptNode:n=>{for(let e=n.parentNode;e&&e!==document.body;e=e.parentNode){if(skip.has(e.nodeName)||['msg','info','sum','mdb'].includes(e.id))return NodeFilter.FILTER_REJECT}return NodeFilter.FILTER_ACCEPT}});
+ let n;while(n=w.nextNode()){if(n.__d===undefined)n.__d=n.nodeValue;const k=n.__d.trim();if(k){const v=T(k);n.nodeValue=n.__d.replace(k,()=>v)}}
+ document.querySelectorAll('[title],[placeholder]').forEach(e=>{for(const a of['title','placeholder']){if(!e.hasAttribute(a))continue;const q='__d_'+a;if(e[q]===undefined)e[q]=e.getAttribute(a);e.setAttribute(a,T(e[q]))}})}
+function applyLang(){
+ document.documentElement.lang=LANG;document.title=T('RAW entwickeln');$('#lang').value=LANG;trDom();msg(lastMsg);
+ if(R){setInfo();setSum();fillMeta()}else $('#mdb').textContent=T('Keine Datei geladen.')}
+$('#lang').onchange=e=>{LANG=e.target.value=='en'?'en':'de';try{localStorage.setItem('lang',LANG)}catch(x){}applyLang()};
+lastMsg=$('#msg').textContent;applyLang();
+</script></body></html>
