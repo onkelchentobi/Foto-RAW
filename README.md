@@ -1,5 +1,9 @@
 ### RAW to DNG Developer 📸 (v0.92 Beta)
 
+![Vorschau der Benutzeroberfläche 1](screenshot.png)
+![Vorschau der Benutzeroberfläche 2](screenshot1.png)
+![Vorschau der Benutzeroberfläche 3](screenshot2.png)
+
 Ein zu 100 % installationsfreies Web-Tool zur Archivierung und Entwicklung von RAW-Bilddateien. Die komplette Anwendung besteht aus einer **einzigen, autarken HTML-Datei namens raw_entwickeln.html**. Sie läuft vollständig lokal in deinem Browser – es werden keinerlei Bilddaten auf einen Server hochgeladen oder im Internet verarbeitet. 
 
 Das Tool wurde speziell dafür entwickelt, um proprietäre Kamera-RAWs (wie Nikon .NEF) in das zukunftssichere, offene **DNG-Format zur Archivierung** umzuwandeln. Zudem lassen sich DNG-Dateien direkt im Browser "entwickeln" und als lineares DNG, unkomprimiertes TIFF oder JPEG exportieren, um sie nahtlos in professionellen Bildbearbeitungsprogrammen weiterzuverarbeiten. 
@@ -34,6 +38,11 @@ Du kannst das Tool auf zwei Arten nutzen und testen: 
 3. Ziehe deine NEF- oder DNG-Datei per Drag-and-Drop in das Fenster.
 
 ### Methode 2: Direkt im Browser testen (GitHub Pages)
+
+![UI Preview 1](screenshot.png)
+![UI Preview 2](screenshot1.png)
+![UI Preview 3](screenshot2.png)
+
 
 Das Tool ist dank GitHub Pages direkt im Web einsatzbereit, ohne dass du etwas herunterladen musst. Klicke einfach auf den folgenden Link (wichtig: nutze Chrome oder Edge!): 
 
