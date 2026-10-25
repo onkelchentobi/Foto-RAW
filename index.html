@@ -36,12 +36,14 @@ input[type=range]{width:100%}input[type=file]{display:none}
 <button data-t="png">PNG<small>verlustfrei</small></button>
 <button data-t="tif8">TIFF<small>unkomprimiert, mit Vorschau</small></button>
 <button data-t="dng8">DNG<small>Linear-DNG, mit Vorschau</small></button>
+<button data-t="dng8o">DNG mit Original<small>+ Original, wiederherstellbar</small></button>
 <div class="mh">16 Bit</div>
 <button data-t="png16">PNG<small>verlustfrei, komprimiert</small></button>
 <button data-t="tif">TIFF<small>unkomprimiert, mit Vorschau</small></button>
 <button data-t="dng">DNG<small>Linear-DNG, mit Vorschau</small></button>
+<button data-t="dngo">DNG mit Original<small>+ Original, wiederherstellbar</small></button>
 </div></div>
-<button id="es">Einstellungen speichern</button><label class="btn">Einstellungen laden<input type="file" id="fl" accept=".txt"></label>
+<button id="es">Einstellungen speichern</button><label class="btn">Einstellungen laden<input type="file" id="fl" accept=".txt,.dng,.tif,.tiff"></label>
 <select id="lang" aria-label="Sprache / Language" style="margin-left:auto"><option value="de">Deutsch</option><option value="en">English</option></select></header>
 <main><div id="st"><canvas id="cv"></canvas><div id="msg">DNG-, NEF-, TIFF- oder JPEG-Datei hierher ziehen oder über „Öffnen“ wählen</div></div>
 <aside><canvas id="hg" width="256" height="90"></canvas><div id="sum"></div><div id="info"></div></aside></main>
@@ -52,7 +54,7 @@ let LANG='de';try{LANG=localStorage.getItem('lang')||''}catch(e){}
 if(LANG!='de'&&LANG!='en')LANG=((navigator.language||'').toLowerCase().indexOf('de')==0)?'de':'en';
 const EN={
 'RAW entwickeln':'Develop RAW','Öffnen …':'Open …','Zurücksetzen':'Reset','Exportieren ▾':'Export ▾','Qualität 100 %':'Quality 100 %','verlustfrei':'lossless',
-'unkomprimiert, mit Vorschau':'uncompressed, with preview','Linear-DNG, mit Vorschau':'Linear DNG, with preview','verlustfrei, komprimiert':'lossless, compressed',
+'unkomprimiert, mit Vorschau':'uncompressed, with preview','Linear-DNG, mit Vorschau':'Linear DNG, with preview','DNG mit Original':'DNG with original','+ Original, wiederherstellbar':'+ original, restorable','verlustfrei, komprimiert':'lossless, compressed',
 'Einstellungen speichern':'Save settings','Einstellungen laden':'Load settings',
 'DNG-, NEF-, TIFF- oder JPEG-Datei hierher ziehen oder über „Öffnen“ wählen':'Drop a DNG, NEF, TIFF or JPEG file here or choose “Open”',
 'Belichtung (EV)':'Exposure (EV)','Temperatur':'Temperature','Tönung':'Tint','Kontrast':'Contrast','Lichter':'Highlights','Schatten':'Shadows','Sättigung':'Saturation',
@@ -69,7 +71,7 @@ const EN={
 'Farbprofil':'Color profile','Rand abgeschnitten L / R / O / U':'Edge cropped L / R / T / B',' Karte(n) angewendet':' map(s) applied','Objektivabschattung (GainMap)':'Lens shading (GainMap)',
 'Kamera unbekannt':'Camera unknown','Rohdaten (Bayer)':'Raw data (Bayer)','Allgemeines Standardprofil':'Generic default profile','Rand abgeschnitten (L/R/O/U)':'Edge cropped (L/R/T/B)',
 'Zuschnitt aus dieser Sitzung übernommen':'Crop taken over from this session','Weißabgleich: geschätzt (Pipette nutzen)':'White balance: estimated (use the eyedropper)','Schwarzwert: geschätzt':'Black level: estimated',
-'Objektivabschattung (GainMap) korrigiert':'Lens shading (GainMap) corrected',
+'Objektivabschattung (GainMap) korrigiert':'Lens shading (GainMap) corrected','Enthält gespeicherte Entwicklungseinstellungen (über „Einstellungen laden“ übernehmbar)':'Contains saved development settings (can be applied via “Load settings”)','Original und Einstellungen aus dem DNG wiederhergestellt':'Original and settings restored from the DNG','Keine Entwicklungseinstellungen in dieser Datei gefunden.':'No development settings found in this file.',
 'Aufnahme':'Captured','Zeit / Blende':'Shutter / Aperture','Brennweite':'Focal length','Blitz':'Flash','Messung':'Metering','Fokusfeld':'Focus point','KB':'35 mm eq.',
 'an (ausgelöst)':'on (fired)','aus':'off','unbekannt':'unknown','Durchschnitt':'Average','Mittenbetont':'Center-weighted','Mehrfeld-Spot':'Multi-spot','Teilmessung':'Partial','andere':'other','Nr. ':'No. ',
 'Feld ':'Point ','Modus ':'Mode ','Einzelfeld':'Single point','Dynamisch':'Dynamic','Dynamisch (nächstes Objekt)':'Dynamic (closest subject)','Gruppe dynamisch':'Group dynamic','Einzelfeld (weit)':'Single point (wide)','Dynamisch (weit)':'Dynamic (wide)',
@@ -91,6 +93,7 @@ const EN={
 const PAT=[[/^Bild-IFD (.*)$/,m=>'Image IFD '+m[1]],[/^(.*) … \((\d+) Bytes\)$/,m=>m[1]+' … ('+m[2]+' bytes)'],[/^(.*) … \((\d+) Werte\)$/,m=>m[1]+' … ('+m[2]+' values)'],
  [/^vorhanden \((\d+) Bytes\), Format nicht lesbar$/,m=>'present ('+m[1]+' bytes), format not readable'],[/^(\d+) – (.+)$/,m=>m[1]+' – '+T(m[2])]];
 function T(s){if(LANG!='en'||typeof s!='string')return s;const v=EN[s];if(v!==undefined)return v;for(const[r,f]of PAT){const m=r.exec(s);if(m)return f(m)}return s}
+const TT=T; // Alias, weil einzelne Funktionen eine lokale Variable T haben
 
 const S=[['ev','Belichtung (EV)',-4,4,.05,0],['temp','Temperatur',-200,200,1,0],['tint','Tönung',-200,200,1,0],['con','Kontrast',-100,100,1,0],['hl','Lichter',-100,100,1,0],['sh','Schatten',-100,100,1,0],['sat','Sättigung',-100,100,1,0]];
 const P={};let R=null,pv=null,pw=0,ph=0,pv0=null,pw0=0,ph0=0,pimg=null,name='foto',raf=0;
@@ -504,6 +507,7 @@ async function load(buf,JP){
    if(cx>=0&&cy>=0&&cw>=16&&ch>=16&&cx+cw<=R_.aw&&cy+ch<=R_.ah){R_.left+=cx;R_.top+=cy;R_.aw=cw;R_.ah=ch}}
   const og=M(51009);
   if(og&&og.length>12){try{R_.gm=gainMaps(og,A[3]-A[1],A[2]-A[0])}catch(e){R_.gm=null}}}
+ {const dp=M(50740);if(dp&&dp.length>14&&String.fromCharCode(...dp.slice(0,14))==DEVTAG)R_.devSet=new TextDecoder().decode(Uint8Array.from(dp.slice(14)))}
  R_.base={l:R_.left,t:R_.top,aw:R_.aw,ah:R_.ah};
  return R_;
 }
@@ -564,17 +568,21 @@ function setSum(){const m=R.sum||{},de=LANG=='de',D=m.datum,
  rows=[['Datei',R.fname],['Aufnahme',dat],['ISO',m.iso],['Zeit / Blende',[m.zeit,m.blende].filter(Boolean).join(' · ')],['Brennweite',bw],['Blitz',bl],['Messung',me],['Fokusfeld',foc]],
  esc=x=>String(x).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
  $('#sum').innerHTML=rows.map(([k,v])=>`<b>${T(k)}</b><span>${v?esc(v):'–'}</span>`).join('')}
-function setInfo(){$('#info').textContent=`${R.cam||T('Kamera unbekannt')}\n${R.aw} × ${R.ah} px · ${R.bps} Bit · ${R.cfa?T('Rohdaten (Bayer)'):'RGB'}`+(R.prof?`\n${T('Farbprofil')}: ${T(R.prof)}`:'')+(R.crop?`\n${T('Rand abgeschnitten (L/R/O/U)')}: ${R.crop.join(' / ')} px`:'')+(R.sessCrop?'\n'+T('Zuschnitt aus dieser Sitzung übernommen'):'')+(R.autoWB?'\n'+T('Weißabgleich: geschätzt (Pipette nutzen)'):'')+(R.blEst?'\n'+T('Schwarzwert: geschätzt')+' ('+R.blEst+')':'')+(R.gm?'\n'+T('Objektivabschattung (GainMap) korrigiert'):'')}
+function setInfo(){$('#info').textContent=`${R.cam||T('Kamera unbekannt')}\n${R.aw} × ${R.ah} px · ${R.bps} Bit · ${R.cfa?T('Rohdaten (Bayer)'):'RGB'}`+(R.prof?`\n${T('Farbprofil')}: ${T(R.prof)}`:'')+(R.crop?`\n${T('Rand abgeschnitten (L/R/O/U)')}: ${R.crop.join(' / ')} px`:'')+(R.sessCrop?'\n'+T('Zuschnitt aus dieser Sitzung übernommen'):'')+(R.autoWB?'\n'+T('Weißabgleich: geschätzt (Pipette nutzen)'):'')+(R.blEst?'\n'+T('Schwarzwert: geschätzt')+' ('+R.blEst+')':'')+(R.gm?'\n'+T('Objektivabschattung (GainMap) korrigiert'):'')+(R.restored?'\n'+T('Original und Einstellungen aus dem DNG wiederhergestellt'):R.devSet?'\n'+T('Enthält gespeicherte Entwicklungseinstellungen (über „Einstellungen laden“ übernehmbar)'):'')}
 async function open(f){
  msg(T('Lade ')+f.name+' …');await tick();
- try{const buf=await f.arrayBuffer();const hd=new Uint8Array(buf,0,2);R=null;R=(hd[0]==255&&hd[1]==216)?await loadJpeg(buf):await load(buf);name=f.name.replace(/\.[^.]+$/,'');
-  R.fname=f.name;R.fsize=f.size;const c0=sessCrop[R.cam]||[0,0,0,0];['l','r','t','b'].forEach((q,i)=>{$('#z_'+q).value=c0[i];$('#zo_'+q).textContent=c0[i]});R.sessCrop=c0.some(Boolean);rotDefault(true);cropCalc();
+ try{let buf=await f.arrayBuffer(),fname=f.name,fsize=f.size,dev=null;
+  const hd0=new Uint8Array(buf,0,4);
+  if(hd0[2]==42||hd0[3]==42){const ex=origFromTiff(buf);if(ex){dev=devFromTiff(buf);buf=ex.data;fname=ex.name||fname;fsize=buf.byteLength}}
+  const hd=new Uint8Array(buf,0,2);R=null;R=(hd[0]==255&&hd[1]==216)?await loadJpeg(buf):await load(buf);name=fname.replace(/\.[^.]+$/,'');R.orig={buf,name:fname};
+  R.fname=fname;R.fsize=fsize;const c0=sessCrop[R.cam]||[0,0,0,0];['l','r','t','b'].forEach((q,i)=>{$('#z_'+q).value=c0[i];$('#zo_'+q).textContent=c0[i]});R.sessCrop=c0.some(Boolean);rotDefault(true);cropCalc();
+  if(dev){R.restored=true;R.sessCrop=false;applySettings(dev,true)}
   buildPv();setInfo();setSum();fillMeta();
   msg('');draw()}
  catch(e){R=null;pv=null;msg(T('Fehler: ')+T(String(e.message||e)))}
 }
 async function exp(type){
- if(!R)return;if(['tif','dng','png16','tif8','dng8'].includes(type))return exp16(type);const f=mkDev(),{g:G2,get:gp}=mkGet(R.aw,R.ah,px),c=document.createElement('canvas');c.width=G2.OW;c.height=G2.OH;
+ if(!R)return;if(['tif','dng','dngo','png16','tif8','dng8','dng8o'].includes(type))return exp16(type);const f=mkDev(),{g:G2,get:gp}=mkGet(R.aw,R.ah,px),c=document.createElement('canvas');c.width=G2.OW;c.height=G2.OH;
  const x=c.getContext('2d'),id=x.createImageData(G2.OW,G2.OH),u=[0,0,0];
  for(let y=0;y<G2.OH;y++){for(let xx=0;xx<G2.OW;xx++){gp(xx,y,u);f(u[0],u[1],u[2],id.data,(y*G2.OW+xx)*4)}if(y%64==0){msg(`${T('Entwickle in voller Größe …')} ${Math.round(y/G2.OH*100)} %`);await tick()}}
  x.putImageData(id,0,0);c.toBlob(async b=>{try{b=await(type=='png'?metaPng:metaJpeg)(b,metaOut(false,G2.OW,G2.OH))}catch(e){}save(b,name+(type=='png'?'.png':'.jpg'))},type=='png'?'image/png':'image/jpeg',1);msg('');
@@ -695,7 +703,7 @@ async function dev16(mode,thumb){
   const n=Math.min(step,h-y0),a=new Uint16Array(n*w*3);
   for(let y=0;y<n;y++)for(let x=0;x<w;x++){gp(x,y0+y,u);f(u[0],u[1],u[2],a,(y*w+x)*3)}
   if(T)for(let y=0;y<n;y++){const r=(((y0+y)/k)|0)*tw;for(let x=0;x<w;x++){const i=r+((x/k)|0),s=(y*w+x)*3;T.cn[i]++;T.acc[i*3]+=a[s];T.acc[i*3+1]+=a[s+1];T.acc[i*3+2]+=a[s+2]}}
-  parts.push(a);msg(`${T('Entwickle in voller Größe …')} ${Math.round((y0+n)/h*100)} %`);await tick()}
+  parts.push(a);msg(`${TT('Entwickle in voller Größe …')} ${Math.round((y0+n)/h*100)} %`);await tick()}
  parts.thumb=T;return parts;
 }
 const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
@@ -718,19 +726,19 @@ async function mkPng(parts,w,h,M){
 async function exp16(type){
  try{
   if(new Uint8Array(new Uint16Array([1]).buffer)[0]!==1)throw new Error('Big-Endian-System wird nicht unterstützt.');
-  const b8=type=='tif8'||type=='dng8',dng=type=='dng'||type=='dng8',w=geo(R.aw,R.ah).OW,h=geo(R.aw,R.ah).OH;
+  const b8=type=='tif8'||type=='dng8'||type=='dng8o',dng=/^dng/.test(type),withOrig=type=='dngo'||type=='dng8o',w=geo(R.aw,R.ah).OW,h=geo(R.aw,R.ah).OH;
   const parts=await dev16(dng&&!b8?2:1,type!='png16');
   if(b8)for(let k=0;k<parts.length;k++){const a=parts[k],o=new Uint8Array(a.length);for(let i=0;i<a.length;i++)o[i]=Math.round(a[i]/257);parts[k]=o}
   msg('Schreibe Datei …');await tick();
   const M=metaOut(dng,w,h);
   if(type=='png16'){save(await mkPng(parts,w,h,M),name+'_16bit.png');msg('');return}
   const bytes=w*h*(b8?3:6),sw=asc('RAW entwickeln');
-  const base=[[256,4,[w]],[257,4,[h]],[258,3,b8?[8,8,8]:[16,16,16]],[259,3,[1]],[273,4,[0]],[274,3,[1]],[277,3,[3]],[278,4,[h]],[279,4,[bytes]],[284,3,[1]],[305,2,sw]];
+  const base=[[254,4,[0]],[256,4,[w]],[257,4,[h]],[258,3,b8?[8,8,8]:[16,16,16]],[259,3,[1]],[273,4,[0]],[274,3,[1]],[277,3,[3]],[278,4,[h]],[279,4,[bytes]],[284,3,[1]],[305,2,sw]];
   let E;
   if(!dng)E=base.concat([[262,3,[2]],[282,5,[300,1]],[283,5,[300,1]],[296,3,[2]],[34675,7,Array.from(iccSRGB())]]);
   else{
    E=base.concat([[262,3,[34892]],[271,2,sw],[272,2,asc('Linear RGB')],
-    [50706,1,[1,4,0,0]],[50707,1,[1,4,0,0]],[50708,2,asc(b8?'Linear RGB (8 Bit)':'Linear RGB (16 Bit)')],[50717,3,[65535,65535,65535]],...(b8?[[50712,3,Array.from({length:256},(_,i)=>{const x=i/255;return Math.round((x<=.04045?x/12.92:((x+.055)/1.055)**2.4)*65535)})]]:[]),
+    [50706,1,[1,4,0,0]],[50707,1,[1,4,0,0]],...(withOrig?[[50740,1,Array.from(new TextEncoder().encode(DEVTAG+settingsText(true)))]]:[]),...(withOrig&&R.orig?[[65100,7,new Uint8Array(R.orig.buf)],[65101,2,asc(R.orig.name)]]:[]),[50708,2,asc(b8?'Linear RGB (8 Bit)':'Linear RGB (16 Bit)')],[50717,3,[65535,65535,65535]],...(b8?[[50712,3,Array.from({length:256},(_,i)=>{const x=i/255;return Math.round((x<=.04045?x/12.92:((x+.055)/1.055)**2.4)*65535)})]]:[]),
     [50721,10,rat([3.2404542,-1.5371385,-.4985314,-.969266,1.8760108,.041556,.0556434,-.2040259,1.0572252])],
     [50728,5,[1,1,1,1,1,1]],[50778,3,[21]],[50936,2,asc('Linear')],[50940,11,[0,0,1,1]],[50941,4,[3]],
     [50964,10,rat([.4360747,.3850649,.1430804,.2225045,.7168786,.0606169,.0139322,.0971045,.7141733])]]);
@@ -747,7 +755,7 @@ async function exp16(type){
     I.push({n:'p',fix:{273:'oJ'},E:[[254,4,[1]],[256,4,[pv.w]],[257,4,[pv.h]],[258,3,[8,8,8]],[259,3,[7]],[262,3,[6]],[273,4,[0]],[277,3,[3]],[278,4,[pv.h]],[279,4,[L]],[284,3,[1]],[530,3,pv.ss],[531,3,[1]]]})}
    else{A.next='p';I.push({n:'p',fix:{513:'oJ'},E:[[259,3,[6]],[282,5,[72,1]],[283,5,[72,1]],[296,3,[2]],[513,4,[0]],[514,4,[L]]]})}}
   const head=mkTiff(I,pv&&pv.bytes);
-  save(new Blob([head,...parts],{type:dng?'image/x-adobe-dng':'image/tiff'}),name+(b8?'_8bit':'_16bit')+(dng?'.dng':'.tif'));
+  save(new Blob([head,...parts],{type:dng?'image/x-adobe-dng':'image/tiff'}),name+(b8?'_8bit':'_16bit')+(withOrig?'_orig':'')+(dng?'.dng':'.tif'));
   msg('');
  }catch(e){msg(T('Fehler beim Export: ')+T(String(e.message||e)));setTimeout(()=>msg(''),6000)}
 }
@@ -759,8 +767,30 @@ $('#ex').onclick=e=>{e.stopPropagation();if(!mn.hidden)return closeM();mn.hidden
 mn.onclick=e=>{const b=e.target.closest('button');if(!b)return;closeM();if(!R)return note('Bitte zuerst eine Datei öffnen.');exp(b.dataset.t)};
 document.addEventListener('click',e=>{if(!mn.contains(e.target))closeM()});
 document.addEventListener('keydown',e=>{if(e.key=='Escape'){closeM();setPick(false)}});
-$('#es').onclick=()=>R&&save(new Blob(['[Entwicklung]\n'+S.map(([k])=>k+'='+P[k]).join('\n')+'\nkurve='+cstr(CP[0])+'\nkurve_r='+cstr(CP[1])+'\nkurve_g='+cstr(CP[2])+'\nkurve_b='+cstr(CP[3])+'\n'],{type:'text/plain'}),name+'.txt');
-$('#fl').onchange=async e=>{const f=e.target.files[0];if(!f)return;for(const l of(await f.text()).split(/\r?\n/)){const q=l.match(/^kurve(?:_([rgb]))?=(.+)$/);if(q)setCurve(q[2].trim(),q[1]?'rgb'.indexOf(q[1])+1:0);const m=l.match(/^(\w+)=(-?[\d.]+)/);if(m&&$('#s_'+m[1]))$('#s_'+m[1]).value=m[2]}readP();draw()};
+const settingsText=full=>'[Entwicklung]\n'+S.map(([k])=>k+'='+P[k]).join('\n')+'\nkurve='+cstr(CP[0])+'\nkurve_r='+cstr(CP[1])+'\nkurve_g='+cstr(CP[2])+'\nkurve_b='+cstr(CP[3])+'\n'+(full?'rot_q='+ROT.q+'\nrot_a='+ROT.a+'\n'+['l','r','t','b'].map(k=>'crop_'+k+'='+$('#z_'+k).value).join('\n')+'\n':'');
+const DEVTAG='RAWENTWICKELN\0';
+$('#es').onclick=()=>R&&save(new Blob([settingsText()],{type:'text/plain'}),name+'.txt');
+// Einstellungen aus einer DNG/TIFF-Datei lesen (privates Tag 50740)
+function devFromTiff(buf){try{const dv=new DataView(buf),le=dv.getUint16(0)==0x4949;if(dv.getUint16(2,le)!=42)return null;
+ const o=dv.getUint32(4,le),n=dv.getUint16(o,le);
+ for(let i=0;i<n;i++){const e=o+2+i*12;if(dv.getUint16(e,le)!=50740)continue;
+  const c=dv.getUint32(e+4,le),q=c>4?dv.getUint32(e+8,le):e+8,u=new Uint8Array(buf,q,c);
+  if(String.fromCharCode(...u.slice(0,14))!=DEVTAG)return null;return new TextDecoder().decode(u.slice(14))}}catch(x){}return null}
+function applySettings(txt,full){
+ for(const l of txt.split(/\r?\n/)){const q=l.match(/^kurve(?:_([rgb]))?=(.+)$/);if(q)setCurve(q[2].trim(),q[1]?'rgb'.indexOf(q[1])+1:0);const m=l.match(/^(\w+)=(-?[\d.]+)/);if(!m)continue;
+  if(m[1]=='rot_q'||m[1]=='rot_a'||/^crop_[lrtb]$/.test(m[1])){if(full){if(m[1]=='rot_q')ROT.q=+m[2]&3;else if(m[1]=='rot_a'){ROT.a=+m[2];rotSl.value=ROT.a;$('#o_rot').textContent=ROT.a}else{const k=m[1].slice(5);$('#z_'+k).value=m[2];$('#zo_'+k).textContent=m[2]}}continue}
+  if($('#s_'+m[1]))$('#s_'+m[1]).value=m[2]}
+ readP();if(full&&R)applyCrop();else draw()}
+// Original-Datei, die beim DNG-Export mit eingebettet wurde (privates Tag 65100)
+function origFromTiff(buf){try{const dv=new DataView(buf),le=dv.getUint16(0)==0x4949;if(dv.getUint16(2,le)!=42)return null;
+ const o=dv.getUint32(4,le),n=dv.getUint16(o,le);let d=null,nm='';
+ for(let i=0;i<n;i++){const e=o+2+i*12,t=dv.getUint16(e,le),c=dv.getUint32(e+4,le);
+  if(t==65100&&c>4){const q=dv.getUint32(e+8,le);d=buf.slice(q,q+c)}
+  if(t==65101){const q=c>4?dv.getUint32(e+8,le):e+8;nm=String.fromCharCode(...new Uint8Array(buf,q,Math.max(0,c-1)))}}
+ return d?{data:d,name:nm}:null}catch(x){}return null}
+$('#fl').onchange=async e=>{const f=e.target.files[0];if(!f)return;e.target.value='';let txt;const hd=new Uint8Array(await f.slice(0,4).arrayBuffer());
+ if(hd[2]==42||hd[3]==42){txt=devFromTiff(await f.arrayBuffer());if(!txt)return note(T('Keine Entwicklungseinstellungen in dieser Datei gefunden.'))}else txt=await f.text();
+ applySettings(txt,false)};
 document.ondragover=e=>e.preventDefault();document.ondrop=e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f)open(f)};
 
 // ---------- Sprache anwenden ----------
