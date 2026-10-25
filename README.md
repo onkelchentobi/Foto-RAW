@@ -39,11 +39,6 @@ Du kannst das Tool auf zwei Arten nutzen und testen: 
 
 ### Methode 2: Direkt im Browser testen (GitHub Pages)
 
-![UI Preview 1](screenshot.png)
-![UI Preview 2](screenshot1.png)
-![UI Preview 3](screenshot2.png)
-
-
 Das Tool ist dank GitHub Pages direkt im Web einsatzbereit, ohne dass du etwas herunterladen musst. Klicke einfach auf den folgenden Link (wichtig: nutze Chrome oder Edge!): 
 
 https://DEIN-GITHUB-NAME.github.io/DEIN-REPO-NAME/raw_entwickeln.html 
